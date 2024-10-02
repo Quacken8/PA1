@@ -1,5 +1,8 @@
 image: $CI_REGISTRY/ict/images/alpine/base:latest
 
+before_script:
+    - apk add build-base
+
 stages:
   - build_and_test
 
@@ -8,7 +11,11 @@ build_and_test:
   script:
     - |
       # Only one topmost folder is expected per commit; git hook on my machine makes sure that's true
-      TOPMOST_FOLDER=$(git diff --name-only "$CI_COMMIT_BEFORE_SHA" "$CI_COMMIT_SHA" | awk -F/ '{print $1}' | sort -u | head -n 1)
+      IFS=':' read -r TOPMOST_FOLDER _ <<< "$CI_COMMIT_MESSAGE"
+
+      if [ "$TOPMOST_FOLDER" -eq "ci" ]; then
+        exit 0
+      fi
 
       cd "$TOPMOST_FOLDER"
 
