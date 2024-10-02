@@ -47,7 +47,7 @@ build_and_test:
           continue
         fi
 
-        TEST_RES=$(./output < $FILENAME > tmp && diff tmp OUTPUT_FILE)
+        TEST_RES=$(./output < $FILE > tmp && diff tmp OUTPUT_FILE)
         if [ -z "$TEST_RES" ]; then
             echo Test $ID passsed
         else
