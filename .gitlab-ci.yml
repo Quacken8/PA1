@@ -13,7 +13,7 @@ build_and_test:
       # Only one topmost folder is expected per commit; git hook on my machine makes sure that's true
       IFS=':' read -r TOPMOST_FOLDER _ <<< "$CI_COMMIT_MESSAGE"
 
-      if [ "$TOPMOST_FOLDER" -eq "ci" ]; then
+      if [ "$TOPMOST_FOLDER" == "ci" ]; then
         exit 0
       fi
 
