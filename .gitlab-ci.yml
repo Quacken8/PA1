@@ -52,7 +52,7 @@ build_and_test:
             echo Test $ID passsed
         else
             echo "Test $ID failed"
-            cat tmp
+            diff tmp "$OUTPUT_FILE"
             rm tmp
             exit 1
         fi
