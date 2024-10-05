@@ -33,13 +33,13 @@ build_and_test:
         FILENAME=$(basename "$FILE")
       
         # Split type_id into type and id
-        IFS='_' read -r TYPE ID <<< "$FILENAME"
+        IFS='_' read -r ID TYPE <<< "$FILENAME"
       
-        if [ "$TYPE" == "output" ]; then
+        if [ "$TYPE" == "out.txt" ]; then
           continue
         fi
       
-        OUTPUT_FILE="tests/output_$ID"
+        OUTPUT_FILE="tests/""$ID""_out.txt"
       
         # Check if the output file exists
         if [ ! -f "$OUTPUT_FILE" ]; then
@@ -57,5 +57,5 @@ build_and_test:
             exit 1
         fi
       done
-
+      rm output
       rm tmp
