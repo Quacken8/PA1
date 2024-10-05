@@ -1,0 +1,163 @@
+= 1. cvičení
+
+Obsahem tohoto cvičení je seznámení se s učebnou, základy kompilace a spuštění programu a práce
+s číselnými soustavami.
+
+== Základní práce s počítačem
+Pro osvojení základní práce se systémem Linux proveďte následující úkoly. V případě problémů
+kontaktujte přítomného cvičícího.
+
+1. Zapněte počítač a nastartujte operační systém Linux.
+2. Přihlašte se do systému vaším uživatelským jménem a heslem (stejné jako do systému KOS).
+3. Spusťte dostupný prohlížeč webových stránek.
+4. Zobrazte si stránku předmětu https://courses.fit.cvut.cz/BI-PA1/tutorials/01.html, přihlašte se a
+najděte ve Cvičebnici tyto instrukce.
+5. Otevřete terminál a vytvořte ve svém domovské adresáři složku `PA1` a v ní složku `cv01`.
+6. V terminálu se přepněte do nově vytvořeného adresáře `~/PA1/cv01`.
+
+[TIP]
+====
+K vytvoření můžete využít i dostupný průzkumník souborů, přesto si vyzkoušejte práci s terminálem.
+Pro práci s terminálem se vám mohou hodit příkazy `ls`, `cd`, `mkdir` a nápověda `man`.
+====
+
+=== Řešení vytvoření adresáře
+
+[source,bash]
+----
+username@pc101:~ $ mkdir PA1
+username@pc101:~ $ cd PA1
+username@pc101:~/PA1 $ mkdir cv01
+username@pc101:~/PA1 $ cd cv01
+username@pc101:~/PA1/cv01 $
+----
+
+Využití přepínače -p pro vytvoření více zanořených adresářů.
+
+[source,bash]
+----
+username@pc101:~ $ mkdir -p PA1/cv01
+username@pc101:~ $ cd PA1/cv01
+username@pc101:~/PA1/cv01 $
+----
+
+== Kompilace
+Vyzkoušejte si zkompilovat jednoduchý zdrojový kód pomocí následujících kroků.
+
+. Otevřete si jednoduchý textový editor (např. `nano`, `vi`, `gedit`, `kate`, `Atom`,
+`VS Code`, ...)
+. Zkopírujte zdrojový kód a uložte jej do adresáře `~/PA1/cv01` pod názvem
+`hello_world.c`.
++
+[source,c]
+----
+#include <stdio.h>
+
+int main () {
+    printf( "Hello World!\n" );
+    return 0;
+}
+----
+
+. Zkompilujte zdrojový kód pomocí jednoduchého příkazu `g++ -Wall -pedantic hello_world.c -o
+hello_world`.
+
+[TIP]
+====
+Při vypisování názvů souborů můžete použít klávesu `TAB` pro automatické doplňování v terminálu.
+====
+
+[start=4]
+. Pokud příkaz nic nevypsal, pak kompilace proběhla v pořádku. Pomocí příkazu `ls` můžeme
+zkontrolovat existenci spustitelného souboru `hello_world`.
+. Spusťte program pomocí příkazu `./hello_world`. Program by měl vypsat hlášku `Hello World!`.
+. Při přepisování zdrojového kódu si dejte pozor na překlepy. V krajním případě nemusí jít program
+zkompilovat. Výhodnější může být celý zdrojový kód zkopírovat a vložit pomocí `CTRL+C` a `CTRL+V`.
+V případě problémů můžete zdrojový kód stáhnout link:{dir}hello_world.c[hello_world.c].
+
+
+. Pokuste se odpovědět na následující otázky:
+- Co znamená `#include <stdio.h>`?
+- Co je to `int main ()`?
+- K čemu slouží `printf("Hello World!\n");`?
+- Proč je na konci `return 0`?
+- Proč jsou na konci řádků obsahující `printf` a `return` středníky?
+
+=== Nápověda
+
+1. Ke spuštění editoru můžete využít standardní nabídku aplikací systému (podobné funkci Start v
+operačním systému Windows), případně využít již otevřený terminál. Pak je vhodné spustit příkaz
+na pozadí pomocí znaku `&` (např. `kate &`).
+2. Znak `~` označuje domovský adresář, na většině systému bývá ekvivalentem pro `/home/<username>`,
+kde `<username>` je uživatelské jméno přihlášeného uživatele. Většinou je jednodušší tedy psát
+pouze `~`.
+3. Příkaz `g++` kompiluje náš program v režimu {cpp}. Mohli bychom ho zkompilovat v režimu C
+například pomocí kompilátoru `gcc` nebo `clang`. Nástroj `g{plus}{plus}` využíváme z toho důvodu,
+že jím kompiluje i systém link:https://progtest.fit.cvut.cz[Progtest] a je tedy vyšší
+pravděpodobnost, že se náš program bude chovat stejně. Přepínače `-Wall -pedantic` (velikost
+písmen je důležitá) zapne téměř všechna varování, tato varování nezpůsobí chybu kompilace, ale
+většinou nás upozorňují na pravděpodobné nestadardní chování našeho programu. Proto bychom měli
+tato varování vždy opravit. Přepínač `-o <filename>` slouží k určení názvu finálního
+spustitelného souboru (na Windows by tedy mohl vypadat `-o hello_world.exe`).
+4. Některé programy nejdou občas spustit, obzvláště pokud je kopírujeme nebo stáhneme z internetu.
+V takovém případě je nejprve nutné povolit spuštění takových souborů. To provedeme jednoduchým
+příkazem `chmod +x <filename>`.
+
+
+== Číselné soustavy
+
+.  Prostudujte si témata týkající se převodu soustav a reprezentace dat ve
+link:../elearning/data_representation/index.html[Studijních materiálech].
+.  Převeďte tato čísla do dvojkové soustavy: `1`, `45`, `265`.
+.  Převeďte tato čísla z dvojkové soustavy do desítkové soustavy: `101101~2~`, `1010011101~2~`,
+`1010101101~2~`, `1010~2~`.
+. Zkuste formulovat algoritmus pro převod čísla v desítkové soustavě do dvojkové.
+- Existuje jen jeden? Pokud ne, který je vhodnější?
+. Zkuste formulovat algoritmus pro převod čísla z dvojkové soustavy do desítkové.
+- Existuje jen jeden? Pokud ne, který je vhodnější?
+
+=== Úlohy pro pokročilé
+
+. Popište algoritmus sčítání dvou čísel v dvojkové soustavě.
+. Zvládnete zobecnit předchozí algoritmy pro libovolné vstupní a výstupní soustavy?
+. Převeďte tato čísla do šestnáctkové soustavy: `5`, `12`, `26526`.
+. Převeďte tato čísla ze šestnáctkové do desítkové soustavy: `0xABBA`, `0xBABA`,
+`0x1234567890ABCDEF`.
+. Převeďte tato čísla ze dvojkové soustavy do šestnáctkové a osmičkové: `101101~2~`,
+`1010011101~2~`, `1010101101~2~`, `1010~2~`.
+. Existuje efektivnější převod z dvojkové soustavy do šestnáctkové a osmičkové?
+- Pro jaké všechny převody bude takový systém fungovat?
+. Převeďte tato čísla do osmičkové soustavy: `45`, `8`.
+. Převeďte tato čísla z osmičkové do šestnáctkové a desítkové soustavy: `075`, `045`.
+. Jaká je hodnota osmičkového čísla `078`?
+
+=== Úlohy zaměřené na reprezentaci celých čísel
+
+. Předpokládejme reprezentaci celých čísel se znaménkem pomocí osmi bitů. V přímém kódu
+reprezentujte čísla `−50`, `−1`, `0`, `50` a číslo `200`. Vzniklé kódy převeďte zpět do desítkové
+soustavy. Diskutujte reprezentaci hodnot `20`, `200` a `2000`.
+. Jak se změní výsledky předchozího příkladu při použití `16` bitů?
+. Předpokládejme reprezentaci celých čísel se znaménkem pomocí osmi bitů. V přímém kódu vypočítejte
+`20 + 12`, `−66 + −96`. Výsledek převeďte do desítkové soustavy.
+. Jak se změní výsledky předchozího příkladu při použití `16` bitů?
+. Předpokládejme reprezentaci celých čísel se znaménkem pomocí osmi bitů. V doplňkovém kódu
+reprezentujte čísla `−50`, `−1`, `0`, `50` a číslo `200`. Vzniklé kódy převeďte zpět do desítkové
+soustavy. Diskutujte reprezentaci hodnot `20`, `200` a `2000`.
+. Jak se změní výsledky předchozího příkladu při použití `16` bitů?
+. Předpokládejme reprezentaci celých čísel se znaménkem pomocí osmi bitů. V doplňkovém kódu
+vypočítejte `20 + 12`, `−66 + −96`. Výsledek převeďte do desítkové soustavy.
+. Jak se změní výsledky předchozího příkladu při použití `16` bitů?
+
+=== Procvičování ke zkoušce
+
+Napište program, který na vstupu dostane zadáno číslo `n1` a bázi `b1`, v níž je zapsané, a bázi
+`b2`, do které číslo převede jako nové číslo `n2` a vypíše. Omezení jsou `2 \<= b \<= 36` pro
+báze `b1`, `b2` a `0 \<= n < 2^32^` pro číslo `n1` v desítkové soustavě. (Procvičuje
+následující témata: číselné soustavy, vstup a výstup, podmínky, cykly, pole, řetězce, funkce.)
+
+[TIP]
+====
+Vyžaduje pokročilejší znalosti, ošetřování vstupů, podmínky, cykly, pole, funkce. Využijte jako
+procvičování před praktickou částí zkoušky.
+====
+
