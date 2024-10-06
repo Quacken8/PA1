@@ -28,7 +28,6 @@ build_and_test:
       fi
 
       TESTFILES=("tests"/*)
-      echo "Test files found: ${#TESTFILES[@]}"
 
       for FILE in "${TESTFILES[@]}"; do
         FILENAME=$(basename "$FILE")
@@ -49,9 +48,7 @@ build_and_test:
           continue
         fi
         
-        echo "Running output for $FILE"
         ./output < "$FILE" > tmp || true
-        echo "Comparing output for $FILE"
         if diff tmp "$OUTPUT_FILE"; then
             echo Test $ID passsed
         else
