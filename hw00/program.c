@@ -21,9 +21,9 @@ const char *
 int main()
 {
   printf("%s\n", prompt);
-
   short i;
   char unexpected_string;
+  // NOLINTNEXTLINE
   short read = scanf("%hd%s", &i, &unexpected_string);
   if (read == 0)
   {
