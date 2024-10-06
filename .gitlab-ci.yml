@@ -48,7 +48,10 @@ build_and_test:
           echo "Warning: Output file for $FILENAME not found. The heck?"
           continue
         fi
+        
+        echo "Running output for $FILE"
         ./output < "$FILE" > tmp
+        echo "Comparing output for $FILE"
         if diff tmp "$OUTPUT_FILE"; then
             echo Test $ID passsed
         else
