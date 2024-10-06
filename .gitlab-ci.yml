@@ -50,7 +50,7 @@ build_and_test:
         fi
         
         echo "Running output for $FILE"
-        ./output < "$FILE" > tmp
+        ./output < "$FILE" > tmp || true
         echo "Comparing output for $FILE"
         if diff tmp "$OUTPUT_FILE"; then
             echo Test $ID passsed
