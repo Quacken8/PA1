@@ -2,7 +2,7 @@
 
 const char *prompt = "ml' nob:";
 const char *read_error = "Neh mi'";
-const char *out_of_bounds_error = "Qih mi' ";
+const char *out_of_bounds_error = "Qih mi'";
 const char *output = "Qapla'";
 const char *unexpected_appendix_error = "bIjatlh 'e' yImev";
 
