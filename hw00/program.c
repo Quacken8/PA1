@@ -22,9 +22,9 @@ int main()
 {
   printf("%s\n", prompt);
   short i;
-  char unexpected_string;
+  char unexpected_char;
   // NOLINTNEXTLINE
-  short read = scanf("%hd%s", &i, &unexpected_string);
+  short read = scanf("%hd %c", &i, &unexpected_char);
   if (read <= 0)
   {
     printf("%s\n", read_error);
