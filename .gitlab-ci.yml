@@ -1,0 +1,61 @@
+image: $CI_REGISTRY/ict/images/alpine/base:latest
+
+before_script:
+    - apk add build-base
+
+stages:
+  - build_and_test
+
+build_and_test:
+  stage: build_and_test
+  script:
+    - |
+      # Only one topmost folder is expected per commit; git hook on my machine makes sure that's true
+      IFS=':' read -r TOPMOST_FOLDER _ <<< "$CI_COMMIT_MESSAGE"
+
+      if [ "$TOPMOST_FOLDER" == "ci" ]; then
+        exit 0
+      fi
+
+      cd "$TOPMOST_FOLDER"
+
+      WARNINGS=$(gcc -Wall -pedantic -o output *.c 2>&1)
+
+      if [ -n "$WARNINGS" ]; then
+        echo "Graceless build"
+        echo "$WARNINGS"
+        exit 1
+      fi
+
+      TESTFILES=("tests"/*)
+      
+      for FILE in "${TESTFILES[@]}"; do
+        FILENAME=$(basename "$FILE")
+      
+        # Split type_id into type and id
+        IFS='_' read -r ID TYPE <<< "$FILENAME"
+      
+        if [ "$TYPE" == "out.txt" ]; then
+          continue
+        fi
+      
+        OUTPUT_FILE="tests/""$ID""_out.txt"
+      
+        # Check if the output file exists
+        if [ ! -f "$OUTPUT_FILE" ]; then
+          echo "Warning: Output file for $FILENAME not found. The heck?"
+          continue
+        fi
+
+        TEST_RES=$(./output < "$FILE" > tmp && diff tmp "$OUTPUT_FILE")
+        if [ -z "$TEST_RES" ]; then
+            echo Test $ID passsed
+        else
+            echo "Test $ID failed"
+            diff tmp "$OUTPUT_FILE"
+            rm tmp
+            exit 1
+        fi
+      done
+      rm output
+      rm tmp
