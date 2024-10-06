@@ -25,7 +25,7 @@ int main()
   char unexpected_string;
   // NOLINTNEXTLINE
   short read = scanf("%hd%s", &i, &unexpected_string);
-  if (read == 0)
+  if (read <= 0)
   {
     printf("%s\n", read_error);
     return 1;
