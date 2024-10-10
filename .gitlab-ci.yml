@@ -2,6 +2,8 @@ image: $CI_REGISTRY/ict/images/alpine/base:latest
 
 before_script:
   - apk add build-base
+  - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  - source $HOME/.cargo/env
 
 stages:
   - build_and_test
@@ -27,7 +29,17 @@ build_and_test:
         exit 1
       fi
 
-      TESTFILES=("tests"/*)
+      CURR_DIR=$(basename "$PWD")
+      if [[ $CURR_DIR == *"_rust" ]]; then
+        IFS='_' read -r C_FOLDER _ <<< "$CURR_DIR"
+        TESTFILES=("../$C_FOLDER/tests"/*)
+        cargo build --release
+        mv ../target/release/$CURR_DIR ./output
+      else
+        TESTFILES=("tests"/*)
+        g++ -o output -Wall -pedantic *.c
+      fi
+      chmod +x output
 
       for FILE in "${TESTFILES[@]}"; do
         FILENAME=$(basename "$FILE")
@@ -39,22 +51,23 @@ build_and_test:
           continue
         fi
 
-        OUTPUT_FILE="tests/""$ID""_out.txt"
+        OUTPUT_FILE="${FILE/in/out}"
 
         # Check if the output file exists
         if [ ! -f "$OUTPUT_FILE" ]; then
           echo "Warning: Output file for $FILENAME not found. The heck?"
           continue
         fi
-        
+              
         ./output < "$FILE" > tmp || true
         if diff tmp "$OUTPUT_FILE"; then
-            echo Test $ID passsed
+          echo Test $ID passsed
         else
-            echo "Test $ID failed"
-            diff tmp "$OUTPUT_FILE"
-            rm tmp
-            exit 1
+          echo "Test $ID failed"
+          diff tmp "$OUTPUT_FILE"
+          rm tmp
+          rm output
+          exit 1
         fi
       done
       rm output

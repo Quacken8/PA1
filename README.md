@@ -4,6 +4,8 @@ In here I'll be putting my solutions to 2024 CTU Programming 1 course homeworks.
 
 Each homework is in its own folder supplied with a README.md that contains the assignment and the test input-output files provided by the university.
 
+Every final and submitted version of the C code is tagged and every rust version that passes the same tests is tagged.
+
 ## Building and usage
 
 ### C
@@ -35,10 +37,18 @@ cd hw00
 
 ### Rust
 
-For the same git reasons I mentioned in the C paragraph, I'll be putting both Cargo.toml and Cargo.lock in here.
+For the same git reasons I mentioned in the C paragraph, I'll be putting both Cargo.toml and Cargo.lock in here. Run each file separately if you want with
 
 ```
-cargo build
+cd hw00_rust
+cargo run
+```
+
+or use the same script as in the C paragraph to run all tests for the given assignment
+
+```
+cd hw00_rust
+../test.sh
 ```
 
 ## test.sh
@@ -46,8 +56,18 @@ cargo build
 ```
 #!/bin/bash
 
-TESTFILES=("tests"/*)
-g++ -o output -Wall -pedantic *.c
+CURR_DIR=$(basename "$PWD")
+
+if [[ $CURR_DIR == *"_rust" ]]; then
+  IFS='_' read -r C_FOLDER _ <<< "$CURR_DIR"
+  TESTFILES=("../$C_FOLDER/tests"/*)
+  cargo build --release
+  mv ../target/release/$CURR_DIR ./output
+else
+  TESTFILES=("tests"/*)
+  g++ -o output -Wall -pedantic *.c
+fi
+chmod +x output
 
 for FILE in "${TESTFILES[@]}"; do
   FILENAME=$(basename "$FILE")
@@ -59,7 +79,7 @@ for FILE in "${TESTFILES[@]}"; do
     continue
   fi
 
-  OUTPUT_FILE="tests/""$ID""_out.txt"
+  OUTPUT_FILE="${FILE/in/out}"
 
   # Check if the output file exists
   if [ ! -f "$OUTPUT_FILE" ]; then
@@ -74,6 +94,7 @@ for FILE in "${TESTFILES[@]}"; do
     echo "Test $ID failed"
     diff tmp "$OUTPUT_FILE"
     rm tmp
+    rm output
     exit 1
   fi
 done
