@@ -1,3 +1,10 @@
 *.out
 test.sh
 *.tgz
+
+/Cargo.toml
+/Cargo.lock
+
+# Added by cargo
+
+/target
