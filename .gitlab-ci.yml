@@ -31,7 +31,6 @@ build_and_test:
 
       for FILE in "${TESTFILES[@]}"; do
         FILENAME=$(basename "$FILE")
-        echo "Processing file: $FILENAME"
 
         # Split type_id into type and id
         IFS='_' read -r ID TYPE <<< "$FILENAME"
