@@ -17,13 +17,23 @@ fn main() {
     let good_input = "Qapla'";
     let out_of_bounds = "Qih mi' ";
     let wrong_input = "Neh mi'";
-    // let unexpected_appendix = "bIjatlh 'e' yImev";
+    let unexpected_appendix = "bIjatlh 'e' yImev";
 
     println!("{}", query);
 
     let mut input = String::new();
     if io::stdin().read_line(&mut input).is_err() {
         println!("{}", wrong_input);
+        return;
+    }
+
+    let input = input.trim();
+
+    if !input
+        .chars()
+        .all(|c| c.is_alphabetic() || c.is_numeric() || c == '-')
+    {
+        println!("{}", unexpected_appendix);
         return;
     }
 
