@@ -36,7 +36,7 @@ fn main() {
     let index = index.unwrap();
 
     if !(0..=8).contains(&index) {
-        println!("{}", out_of_bounds);
+        println!("{}{}", out_of_bounds, index);
         return;
     }
 
