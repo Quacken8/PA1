@@ -43,6 +43,86 @@ int main ( int argc, char * argv [] )
 }
 ```
 
+## Ukázka práce programu:
+
+```
+ml' nob:
+0
+Qapla'
+noH QapmeH wo' Qaw'lu'chugh yay chavbe'lu' 'ej wo' choqmeH may' DoHlu'chugh lujbe'lu'.
+```
+
+```
+ml' nob:
+1
+Qapla'
+bortaS bIr jablu'DI' reH QaQqu' nay'.
+```
+
+```
+ml' nob:
+2
+Qapla'
+Qu' buSHa'chugh SuvwI', batlhHa' vangchugh, qoj matlhHa'chugh, pagh ghaH SuvwI''e'.
+```
+
+```
+ml' nob:
+3
+Qapla'
+bISeH'eghlaH'be'chugh latlh Dara'laH'be'.
+```
+
+```
+ml' nob:
+4
+Qapla'
+qaStaHvIS wa' ram loS SaD Hugh SIjlaH qetbogh loD.
+```
+
+```
+ml' nob:
+5
+Qapla'
+Suvlu'taHvIS yapbe' HoS neH.
+```
+
+```
+ml' nob:
+6
+Qapla'
+Ha'DIbaH DaSop 'e' DaHechbe'chugh yIHoHQo'.
+```
+
+```
+ml' nob:
+007
+Qapla'
+Heghlu'meH QaQ jajvam.
+
+ml' nob:
+           8
+Qapla'
+leghlaHchu'be'chugh mIn lo'laHbe' taj jej.
+```
+
+```
+ml' nob:
+29
+Qih mi' 29
+```
+
+```
+ml' nob:
+-5
+Qih mi' -5
+```
+
+```
+ml' nob:
+abc
+```
+
 # Poznámky:
 
 - Ukázkové běhy zachycují očekávané výpisy Vašeho programu (tučné písmo) a vstupy zadané uživatelem (základní písmo). Zvýraznění tučným písmem je použité pouze zde na stránce zadání, aby byl výpis lépe čitelný. Váš program má za úkol pouze zobrazit text bez zvýrazňování (bez HTML markupu).
