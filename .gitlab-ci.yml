@@ -1,7 +1,7 @@
 image: $CI_REGISTRY/ict/images/alpine/base:latest
 
 before_script:
-  - apk add build-base
+  - apk add --no-cache build-base curl
   - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
   - source $HOME/.cargo/env
 
