@@ -1,6 +1,6 @@
 use std::io;
 
-fn main() -> Result<(), ()> {
+fn main() {
     let quotes = [
         "noH QapmeH wo' Qaw'lu'chugh yay chavbe'lu' 'ej wo' choqmeH may' DoHlu'chugh lujbe'lu'.",
         "bortaS bIr jablu'DI' reH QaQqu' nay'.",
@@ -14,29 +14,31 @@ fn main() -> Result<(), ()> {
     ];
 
     let query = "ml' nob:";
-
+    let good_input = "Qapla'";
     let out_of_bounds = "Qih mi' ";
     let wrong_input = "Neh mi'";
-    let unexpected_appendix = "bIjatlh 'e' yImev";
+    // let unexpected_appendix = "bIjatlh 'e' yImev";
 
     println!("{}", query);
 
     let mut input = String::new();
     if io::stdin().read_line(&mut input).is_err() {
         println!("{}", wrong_input);
-        return Err(());
+        return;
     }
 
-    let index = input.trim().parse::<i32>().map_err(|_| {
+    let index = input.trim().parse::<i32>();
+    if index.is_err() {
         println!("{}", wrong_input);
-    })?;
+        return;
+    }
+
+    let index = index.unwrap();
 
     if !(0..=8).contains(&index) {
         println!("{}", out_of_bounds);
-        return Err(());
+        return;
     }
 
-    println!("{}", quotes[index as usize]);
-
-    return Ok(());
+    println!("{}\n{}", good_input, quotes[index as usize]);
 }
