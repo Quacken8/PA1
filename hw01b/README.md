@@ -8,9 +8,9 @@ Může se stát že vstupní body leží na přímce, pak zadání nemá žádn�
 
 Pokud je vstup neplatný, program to musí detekovat a zobrazit chybové hlášení. Chybové hlášení zobrazujte na standardní výstup (ne na chybový výstup). Za chybu považujte:
 
-    nečíselné zadání souřadnic (neplatné desetinné číslo),
-    chybějící souřadnice,
-    chybějící nebo přebývající oddělovače (souřadnice musí být zadaná v hranatých závorkách, hodnoty x a y musí být oddělené čárkou).
+- nečíselné zadání souřadnic (neplatné desetinné číslo),
+- chybějící souřadnice,
+- chybějící nebo přebývající oddělovače (souřadnice musí být zadaná v hranatých závorkách, hodnoty x a y musí být oddělené čárkou).
 
 ## Ukázka práce programu:
 
