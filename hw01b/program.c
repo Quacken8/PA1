@@ -52,41 +52,64 @@ read_point()
   return res;
 }
 
+// It is expected the corners are all adjacent
+const char *categorize_shape(struct Point a, struct Point b, struct Point c)
+{
+  struct Point side_a = {a.x - b.x, a.y - b.y};
+  struct Point side_b = {b.x - c.x, b.y - c.y};
+  int right_angle = are_approx_equal(side_a.x * side_b.x + side_a.y * side_b.y, 0);
+  int same_length = are_approx_equal(hypot(side_a.x, side_a.y), hypot(side_b.x, side_b.y));
+
+  if (right_angle && same_length)
+    return "ctverec";
+  if (right_angle)
+    return "obdelnik";
+  if (same_length)
+    return "kosoctverec";
+
+  return "rovnobeznik";
+}
+
 int main()
 {
+  struct Point a = {0.7071067811865476, 0.7071067811865476};
+  struct Point b = {0, 0};
+  struct Point c = {1, 0};
 
-  printf("Bod A:\n");
-  struct ReadResult res = read_point();
-  if (!res.success)
-  {
-    printf("%s", bad_input);
-    return 0;
-  }
-  struct Point a = res.point;
+  printf("%s", categorize_shape(a, b, c));
 
-  printf("Bod B:\n");
-  res = read_point();
-  if (!res.success)
-  {
-    printf("%s", bad_input);
-    return 0;
-  }
-  struct Point b = res.point;
+  // printf("Bod A:\n");
+  // struct ReadResult res = read_point();
+  // if (!res.success)
+  // {
+  //   printf("%s", bad_input);
+  //   return 0;
+  // }
+  // struct Point a = res.point;
 
-  printf("Bod C:\n");
-  res = read_point();
-  if (!res.success)
-  {
-    printf("%s", bad_input);
-    return 0;
-  }
-  struct Point c = res.point;
+  // printf("Bod B:\n");
+  // res = read_point();
+  // if (!res.success)
+  // {
+  //   printf("%s", bad_input);
+  //   return 0;
+  // }
+  // struct Point b = res.point;
 
-  if (are_in_line(a, b, c))
-  {
-    printf("Rovnobezniky nelze sestrojit.\n");
-    return 0;
-  }
+  // printf("Bod C:\n");
+  // res = read_point();
+  // if (!res.success)
+  // {
+  //   printf("%s", bad_input);
+  //   return 0;
+  // }
+  // struct Point c = res.point;
+
+  // if (are_in_line(a, b, c))
+  // {
+  //   printf("Rovnobezniky nelze sestrojit.\n");
+  //   return 0;
+  // }
 
   return 0;
 }
