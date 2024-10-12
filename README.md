@@ -1,137 +1,127 @@
-# hw00 (Zahřívací úloha)
+# BI-PA1 repo
 
-Úkolem je vytvořit program, který bude zobrazovat vybrané citáty.
+In here I'll be putting my solutions to 2024 CTU Programming 1 course homeworks. I'll try making solutions both in Rust and C.
 
-Vstupem programu je jedno celé číslo. Toto číslo je z rozsahu 0 až 8 a určuje citát, který má být zobrazen.
+Each homework is in its own folder supplied with a README.md that contains the assignment and the test input-output files provided by the university.
 
-Výstupem programu je citát odpovídající zadanému číslu na vstupu. Citáty odpovídající jednotlivým číslům jsou uvedené v ukázkových bězích programu níže. Pozor, za textem citátu je odřádkování (\n).
+Every final and submitted version of the C code is tagged and every rust version that passes the same tests is tagged.
 
-Pokud je vstup neplatný, program to musí detekovat a zobrazit chybové hlášení. Chybové hlášení zobrazujte na standardní výstup (ne na chybový výstup). Za chybu považujte:
+## Building and usage
 
-- ze vstupu nelze přečíst celé číslo,
-- číslo přečtené ze vstupu je mimo interval 0 až 8.
+### C
 
-Povšimněte si, že program zobrazuje různá chybová hlášení. První chybové hlášení se uplatní, pokud program nemůže ze vstupu přečíst platné celé číslo. Druhé chybové hlášení se pak použije, pokud je načtené číslo mimo rozsah (viz ukázka).
-
-Při programování si dejte pozor na přesnou podobu výpisů. Výstup Vašeho programu kontroluje stroj, který požaduje přesnou shodu výstupů Vašeho programu s výstupy referenčními. Za chybu je považováno, pokud se výpis liší. I chybějící nebo přebývající mezera/odřádkování je považováno za chybu. Abyste tyto problémy rychle vyloučili, použijte přiložený archiv se sadou vstupních a očekávaných výstupních dat. Podívejte se na videotutoriál (courses -> výuková videa), jak testovací data použít a jak testování zautomatizovat.
-
-Váš program bude spouštěn v omezeném testovacím prostředí. Je omezen dobou běhu (limit je vidět v logu referenčního řešení) a dále je omezena i velikost dostupné paměti (ale tato úloha by ani s jedním omezením neměla mít problém). Testovací prostředí dále zakazuje používat některé "nebezpečné funkce" -- funkce pro spouštění programu, pro práci se sítí, ... Pokud jsou tyto funkce použité, program se nespustí. Možná ve svém programu používáte volání:
+Just navigate to a given folder and use compiler of your choice to compile the .c files.
 
 ```
-int main ( int argc, char * argv [] )
-{
-
-  ...
-
-  system ( "pause" ); /* aby se nezavrelo okno programu */
-  return 0;
-}
+cd hw00
+g++ -o output.out -Wall -pedantic *.c
 ```
 
-Toto nebude v testovacím prostředí fungovat - je zakázáno spouštění jiného programu. (I pokud by se program spustil, byl by odmítnut. Nebyl by totiž nikdo, kdo by pauzu "odmáčkl", program by čekal věčně a překročil by tak maximální dobu běhu.) Pokud tedy chcete zachovat pauzu pro testování na Vašem počítači a zároveň chcete mít jistotu, že program poběží správně, použijte následující trik:
+Each folder is supplied with testing data from the uni in the `tests` folder. Each _\_in.txt is paired with and _\_out.txt so you can test the program.
 
 ```
-int main ( int argc, char * argv [] )
-{
-
-  ...
-
-#ifndef __PROGTEST__
-  system ( "pause" ); /* toto progtest "nevidi" */
-#endif /* __PROGTEST__ */
-  return 0;
-}
+cd hw00
+g++ -o output.out -Wall -pedantic *.c
+./output.out < tests/0000_in.txt > tmp && diff tmp tests/0000_out.txt
 ```
 
-## Ukázka práce programu:
+I also have a script for a more conveninent way of testing, but because this repo is also a subject to our GIT course (which makes some unusual choices about repo structure), I can't put a test script in the root dir. So for the convenience of anyone cloning this I'll be putting the script at the end of this readme. May God have mercy.
+
+If you put that script in the root you can run any of the homeworks againts all supplied tests like so
 
 ```
-ml' nob:
-0
-Qapla'
-noH QapmeH wo' Qaw'lu'chugh yay chavbe'lu' 'ej wo' choqmeH may' DoHlu'chugh lujbe'lu'.
+chmod +x test.sh
+cd hw00
+../test.sh
 ```
 
-```
-ml' nob:
-1
-Qapla'
-bortaS bIr jablu'DI' reH QaQqu' nay'.
-```
+### Rust
+
+For the same git reasons I mentioned in the C paragraph, I'll be putting both Cargo.toml and Cargo.lock in here. Run each file separately if you want with
 
 ```
-ml' nob:
-2
-Qapla'
-Qu' buSHa'chugh SuvwI', batlhHa' vangchugh, qoj matlhHa'chugh, pagh ghaH SuvwI''e'.
+cd hw00_rust
+cargo run
 ```
 
-```
-ml' nob:
-3
-Qapla'
-bISeH'eghlaH'be'chugh latlh Dara'laH'be'.
-```
+or use the same script as in the C paragraph to run all tests for the given assignment
 
 ```
-ml' nob:
-4
-Qapla'
-qaStaHvIS wa' ram loS SaD Hugh SIjlaH qetbogh loD.
+cd hw00_rust
+../test.sh
 ```
 
-```
-ml' nob:
-5
-Qapla'
-Suvlu'taHvIS yapbe' HoS neH.
-```
+## test.sh
 
 ```
-ml' nob:
-6
-Qapla'
-Ha'DIbaH DaSop 'e' DaHechbe'chugh yIHoHQo'.
+#!/bin/bash
+
+CURR_DIR=$(basename "$PWD")
+
+if [[ $CURR_DIR == *"_rust" ]]; then
+  IFS='_' read -r C_FOLDER _ <<< "$CURR_DIR"
+  TESTFILES=("../$C_FOLDER/tests"/*)
+  cargo build --release
+  mv ../target/release/$CURR_DIR ./output
+else
+  TESTFILES=("tests"/*)
+  g++ -o output -Wall -pedantic *.c
+fi
+chmod +x output
+
+for FILE in "${TESTFILES[@]}"; do
+  FILENAME=$(basename "$FILE")
+
+  # Split type_id into type and id
+  IFS='_' read -r ID TYPE <<< "$FILENAME"
+
+  if [ "$TYPE" == "out.txt" ]; then
+    continue
+  fi
+
+  OUTPUT_FILE="${FILE/in/out}"
+
+  # Check if the output file exists
+  if [ ! -f "$OUTPUT_FILE" ]; then
+    echo "Warning: Output file for $FILENAME not found. The heck?"
+    continue
+  fi
+
+  ./output < "$FILE" > tmp || true
+  if diff tmp "$OUTPUT_FILE"; then
+    echo Test $ID passsed
+  else
+    echo "Test $ID failed"
+    diff tmp "$OUTPUT_FILE"
+    rm tmp
+    rm output
+    exit 1
+  fi
+done
+rm output
+rm tmp
+exit 0
 ```
 
-```
-ml' nob:
-007
-Qapla'
-Heghlu'meH QaQ jajvam.
-
-ml' nob:
-           8
-Qapla'
-leghlaHchu'be'chugh mIn lo'laHbe' taj jej.
-```
+## Cargo.toml
 
 ```
-ml' nob:
-29
-Qih mi' 29
+[workspace]
+
+members = [
+  "hw00_rust"
+]
 ```
 
-```
-ml' nob:
--5
-Qih mi' -5
-```
+## Cargo.lock
 
 ```
-ml' nob:
-abc
+# This file is automatically @generated by Cargo.
+# It is not intended for manual editing.
+version = 3
+
+[[package]]
+name = "hw00_rust"
+version = "0.1.0"
+
 ```
-
-# Poznámky:
-
-- Ukázkové běhy zachycují očekávané výpisy Vašeho programu (tučné písmo) a vstupy zadané uživatelem (základní písmo). Zvýraznění tučným písmem je použité pouze zde na stránce zadání, aby byl výpis lépe čitelný. Váš program má za úkol pouze zobrazit text bez zvýrazňování (bez HTML markupu).
-- Znak odřádkování (\n) je i za poslední řádkou výstupu (i za případným chybovým hlášením).
-- Výzvy programu a citáty jsou úmyslně zvoleny tak, aby bylo obtížné je ručně opisovat. Úloha se Vás snaží mj. naučit efektivní práci s počítačem, tedy např. s funkcemi copy & paste (které bohužel někteří studenti neznají nebo neumějí použít). Vyzkoušejte si a naučte se copy & paste jak pod Windows tak pod UNIXem (Linuxem), u závěrečného testu se to bude hodit!
-- Ruční kontrola shody Vašeho a referenčního výstupu je nudná, člověk při porovnávání často přehlédne drobný rozdíl. Obzvláště to platí u textu v úloze, který pro většinu lidí není srozumitelný. Toto je opět záměr. Využijte volna na začátku semestru a naučte se v této jednoduché úloze efektivně testovat Vaše programy. Podívejte se na zmíněný videotutoriál (courses -> výuková videa) a využijte pro porovnání Váš počítač. V dalších úlohách tím ušetříte mnoho času.
-- Vstup typu 1.23 případně 1abcd není správný. Jeho ošetření je ale pracnější. Program proto můžete realizovat v jednodušší podobě, která takový vstup akceptuje jako číslo 1. Takový program bude hodnocen nominálním počtem bodů (100 %). Pro zájemce je k dispozici bonusový test, který zkouší zadávat právě tento typ vstupů. Pokud správně ošetříte i tento typ chyb, bude váš program hodnocen body navíc. Ukázka práce programu pro tento typ vstupu:
-  ```
-  ml' nob:
-  1.23
-  bIjatlh 'e' yImev
-  ```
