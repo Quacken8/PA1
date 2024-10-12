@@ -70,46 +70,58 @@ const char *categorize_shape(struct Point a, struct Point b, struct Point c)
   return "rovnobeznik";
 }
 
+struct Point find_fourth(struct Point a, struct Point b, struct Point c)
+{
+  struct Point fourth = {
+      c.x + a.x - b.x,
+      c.y + a.y - b.y};
+  return fourth;
+}
+
 int main()
 {
-  struct Point a = {0.7071067811865476, 0.7071067811865476};
-  struct Point b = {0, 0};
-  struct Point c = {1, 0};
 
-  printf("%s", categorize_shape(a, b, c));
+  printf("Bod A:\n");
+  struct ReadResult res = read_point();
+  if (!res.success)
+  {
+    printf("%s", bad_input);
+    return 0;
+  }
+  struct Point a = res.point;
 
-  // printf("Bod A:\n");
-  // struct ReadResult res = read_point();
-  // if (!res.success)
-  // {
-  //   printf("%s", bad_input);
-  //   return 0;
-  // }
-  // struct Point a = res.point;
+  printf("Bod B:\n");
+  res = read_point();
+  if (!res.success)
+  {
+    printf("%s", bad_input);
+    return 0;
+  }
+  struct Point b = res.point;
 
-  // printf("Bod B:\n");
-  // res = read_point();
-  // if (!res.success)
-  // {
-  //   printf("%s", bad_input);
-  //   return 0;
-  // }
-  // struct Point b = res.point;
+  printf("Bod C:\n");
+  res = read_point();
+  if (!res.success)
+  {
+    printf("%s", bad_input);
+    return 0;
+  }
+  struct Point c = res.point;
 
-  // printf("Bod C:\n");
-  // res = read_point();
-  // if (!res.success)
-  // {
-  //   printf("%s", bad_input);
-  //   return 0;
-  // }
-  // struct Point c = res.point;
+  if (are_in_line(a, b, c))
+  {
+    printf("Rovnobezniky nelze sestrojit.\n");
+    return 0;
+  }
 
-  // if (are_in_line(a, b, c))
-  // {
-  //   printf("Rovnobezniky nelze sestrojit.\n");
-  //   return 0;
-  // }
+  struct Point fourth = find_fourth(c, a, b);
+  printf("A': [%.8g,%.8g], %s\n", fourth.x, fourth.y, categorize_shape(c, a, b));
+
+  fourth = find_fourth(a, b, c);
+  printf("B': [%.8g,%.8g], %s\n", fourth.x, fourth.y, categorize_shape(a, b, c));
+
+  fourth = find_fourth(b, c, a);
+  printf("C': [%.8g,%.8g], %s\n", fourth.x, fourth.y, categorize_shape(b, c, a));
 
   return 0;
 }
