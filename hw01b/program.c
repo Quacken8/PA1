@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <math.h>
 
-const double relative_epsilon = 2.0 / 1000;
+const double relative_epsilon = 1e-3;
+const double absolute_epsilon = 1e-6;
 const char *bad_input = "Nespravny vstup.\n";
 
 int are_approx_equal(double x, double y)
 {
-  return fabs(x - y) < relative_epsilon * (fabs(x) + fabs(y));
+  if (fabs(x) < absolute_epsilon && fabs(y) < absolute_epsilon)
+    return 1;
+  return fabs(x - y) <= relative_epsilon * (fabs(x) + fabs(y));
 }
 
 struct Point
@@ -38,14 +41,14 @@ read_point()
   char closing_bracket;
   int success = 1;
   // NOLINTNEXTLINE
-  int read_vars = scanf(" [%lf, %lf%c ", &x, &y, &closing_bracket);
+  int read_vars = scanf(" [ %lf , %lf %c ", &x, &y, &closing_bracket);
 
   if (read_vars != 3 || closing_bracket != ']')
     success = 0;
-
   struct ReadResult res = {
       success,
       {x, y}};
+
   return res;
 }
 
