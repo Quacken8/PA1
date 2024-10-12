@@ -1,16 +1,9 @@
 #include <stdio.h>
+#include <float.h>
+#include <stdlib.h>
 #include <math.h>
 
-const double relative_epsilon = 1e-3;
-const double absolute_epsilon = 1e-6;
 const char *bad_input = "Nespravny vstup.\n";
-
-int are_approx_equal(double x, double y)
-{
-  if (fabs(x) < absolute_epsilon && fabs(y) < absolute_epsilon)
-    return 1;
-  return fabs(x - y) <= relative_epsilon * (fabs(x) + fabs(y));
-}
 
 struct Point
 {
@@ -18,12 +11,38 @@ struct Point
   double y;
 };
 
-int are_in_line(struct Point a, struct Point b, struct Point c)
+int are_in_line(struct Point p1, struct Point p2, struct Point p3)
 {
-  struct Point v1 = {a.x - b.x, a.y - b.y};
-  struct Point v2 = {b.x - c.x, b.y - c.y};
-  double angle = fabs(atan2(v2.y, v2.x) - atan2(v1.y, v1.x));
-  return are_approx_equal(angle, 0) || are_approx_equal(angle, 4.0 * atan(1));
+  double side_a = hypot(p1.x - p2.x, p1.y - p2.y);
+  double side_b = hypot(p2.x - p3.x, p2.y - p3.y);
+  double hypo = hypot(p3.x - p1.x, p3.y - p1.y);
+
+  double largest = side_a > side_b ? side_a : side_b;
+  largest = largest > hypo ? largest : hypo;
+  double smallest = side_a < side_b ? side_a : side_b;
+  smallest = smallest < hypo ? largest : hypo;
+  double mid = side_a + side_b + hypo - largest - smallest;
+
+  return fabs(smallest + mid - largest) < largest * DBL_EPSILON;
+}
+
+int make_right_triangle(struct Point p1, struct Point p2, struct Point p3)
+{
+  double side_a = hypot(p1.x - p2.x, p1.y - p2.y);
+  double side_b = hypot(p2.x - p3.x, p2.y - p3.y);
+  double hypo = hypot(p3.x - p1.x, p3.y - p1.y);
+  double larger = hypot(side_a, side_b) > hypo ? hypot(side_a, side_b) : hypo;
+
+  return fabs(hypot(side_a, side_b) - hypo) < larger * 100 * DBL_EPSILON;
+}
+
+int are_equidistant(struct Point p1, struct Point p2, struct Point p3)
+{
+  double side_a = hypot(p1.x - p2.x, p1.y - p2.y);
+  double side_b = hypot(p2.x - p3.x, p2.y - p3.y);
+  double largest = side_a > side_b ? side_a : side_b;
+
+  return fabs(side_a - side_b) < largest * 100 * DBL_EPSILON;
 }
 
 struct ReadResult
@@ -53,11 +72,9 @@ read_point()
 // It is expected the corners are all adjacent
 const char *categorize_shape(struct Point a, struct Point b, struct Point c)
 {
-  struct Point side_a = {a.x - b.x, a.y - b.y};
-  struct Point side_b = {b.x - c.x, b.y - c.y};
-  double angle = fabs(atan2(side_a.y, side_a.x) - atan2(side_b.y, side_b.x));
-  int right_angle = are_approx_equal(angle, 2.0 * atan(1));
-  int same_length = are_approx_equal(hypot(side_a.x, side_a.y), hypot(side_b.x, side_b.y));
+
+  int right_angle = make_right_triangle(a, b, c);
+  int same_length = are_equidistant(a, b, c);
 
   if (right_angle && same_length)
     return "ctverec";
