@@ -18,14 +18,12 @@ struct Point
   double y;
 };
 
-// using cross multiplication
 int are_in_line(struct Point a, struct Point b, struct Point c)
 {
   struct Point v1 = {a.x - b.x, a.y - b.y};
   struct Point v2 = {b.x - c.x, b.y - c.y};
-  double v1_x_v2 = v1.x * v2.y - v1.y * v2.x;
-
-  return are_approx_equal(v1_x_v2, 0);
+  double angle = fabs(atan2(v2.y, v2.x) - atan2(v1.y, v1.x));
+  return are_approx_equal(angle, 0) || are_approx_equal(angle, 4.0 * atan(1));
 }
 
 struct ReadResult
@@ -57,7 +55,8 @@ const char *categorize_shape(struct Point a, struct Point b, struct Point c)
 {
   struct Point side_a = {a.x - b.x, a.y - b.y};
   struct Point side_b = {b.x - c.x, b.y - c.y};
-  int right_angle = are_approx_equal(side_a.x * side_b.x + side_a.y * side_b.y, 0);
+  double angle = fabs(atan2(side_a.y, side_a.x) - atan2(side_b.y, side_b.x));
+  int right_angle = are_approx_equal(angle, 2.0 * atan(1));
   int same_length = are_approx_equal(hypot(side_a.x, side_a.y), hypot(side_b.x, side_b.y));
 
   if (right_angle && same_length)
