@@ -1,0 +1,6 @@
+Bod A:
+Bod B:
+Bod C:
+A': [5.46026e-63,1.519032e-62], ctverec
+B': [-1.52365e-62,5.44872e-63], rovnobeznik
+C': [1.520186e-62,-5.50644e-63], rovnobeznik
