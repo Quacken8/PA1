@@ -1,3 +1,9 @@
+# _**Do not look at the solutions if you are also enrolled in this class**_
+
+The evaluationg system is rather trigger-happy and I'm told even a subconscious inspiration _may_ look like plagiarism and we both get flagged. Idk how true that is but I've been told too many times not to show my solutions.
+
+Feel free to yoink the test files tho ~
+
 # BI-PA1 repo
 
 In here I'll be putting my solutions to 2024 CTU Programming 1 course homeworks. I'll try making solutions both in Rust and C.
