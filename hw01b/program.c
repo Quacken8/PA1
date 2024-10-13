@@ -11,19 +11,19 @@ struct Point
   double y;
 };
 
-int are_in_line(struct Point p1, struct Point p2, struct Point p3)
+int is_any_invalid(struct Point p1, struct Point p2, struct Point p3)
 {
-  double side_a = hypot(p1.x - p2.x, p1.y - p2.y);
-  double side_b = hypot(p2.x - p3.x, p2.y - p3.y);
-  double hypo = hypot(p3.x - p1.x, p3.y - p1.y);
+  return isnan(p1.x) || isinf(p1.x) || isnan(p1.y) || isinf(p1.y) || isnan(p2.x) || isinf(p2.x) || isnan(p2.y) || isinf(p2.y) || isnan(p3.x) || isinf(p3.x) || isnan(p3.y) || isinf(p3.y);
+}
 
-  double largest = side_a > side_b ? side_a : side_b;
-  largest = largest > hypo ? largest : hypo;
-  double smallest = side_a < side_b ? side_a : side_b;
-  smallest = smallest < hypo ? largest : hypo;
-  double mid = side_a + side_b + hypo - largest - smallest;
-
-  return fabs(smallest + mid - largest) < largest * DBL_EPSILON;
+int is_det_zero(struct Point p1, struct Point p2, struct Point p3)
+{
+  struct Point v1 = {p1.x - p2.x, p1.y - p2.y};
+  struct Point v2 = {p2.x - p3.x, p2.y - p3.y};
+  double xy = v1.x * v2.y;
+  double yx = v1.y * v2.x;
+  double largest = fabs(xy) > fabs(yx) ? fabs(xy) : fabs(yx);
+  return fabs(xy - yx) <= largest * 100 * DBL_EPSILON;
 }
 
 int make_right_triangle(struct Point p1, struct Point p2, struct Point p3)
@@ -33,7 +33,7 @@ int make_right_triangle(struct Point p1, struct Point p2, struct Point p3)
   double hypo = hypot(p3.x - p1.x, p3.y - p1.y);
   double larger = hypot(side_a, side_b) > hypo ? hypot(side_a, side_b) : hypo;
 
-  return fabs(hypot(side_a, side_b) - hypo) < larger * 100 * DBL_EPSILON;
+  return fabs(hypot(side_a, side_b) - hypo) <= larger * 100 * DBL_EPSILON;
 }
 
 int are_equidistant(struct Point p1, struct Point p2, struct Point p3)
@@ -42,7 +42,7 @@ int are_equidistant(struct Point p1, struct Point p2, struct Point p3)
   double side_b = hypot(p2.x - p3.x, p2.y - p3.y);
   double largest = side_a > side_b ? side_a : side_b;
 
-  return fabs(side_a - side_b) < largest * 100 * DBL_EPSILON;
+  return fabs(side_a - side_b) <= largest * 100 * DBL_EPSILON;
 }
 
 struct ReadResult
@@ -124,20 +124,21 @@ int main()
   }
   struct Point c = res.point;
 
-  if (are_in_line(a, b, c))
+  struct Point a_prime = find_fourth(c, a, b);
+  struct Point b_prime = find_fourth(a, b, c);
+  struct Point c_prime = find_fourth(b, c, a);
+
+  if (is_det_zero(a, b, c) || is_any_invalid(a, b, c) || is_any_invalid(a_prime, b_prime, c_prime))
   {
     printf("Rovnobezniky nelze sestrojit.\n");
     return 0;
   }
 
-  struct Point fourth = find_fourth(c, a, b);
-  printf("A': [%.8g,%.8g], %s\n", fourth.x, fourth.y, categorize_shape(c, a, b));
+  printf("A': [%.8g,%.8g], %s\n", a_prime.x, a_prime.y, categorize_shape(c, a, b));
 
-  fourth = find_fourth(a, b, c);
-  printf("B': [%.8g,%.8g], %s\n", fourth.x, fourth.y, categorize_shape(a, b, c));
+  printf("B': [%.8g,%.8g], %s\n", b_prime.x, b_prime.y, categorize_shape(a, b, c));
 
-  fourth = find_fourth(b, c, a);
-  printf("C': [%.8g,%.8g], %s\n", fourth.x, fourth.y, categorize_shape(b, c, a));
+  printf("C': [%.8g,%.8g], %s\n", c_prime.x, c_prime.y, categorize_shape(b, c, a));
 
   return 0;
 }
