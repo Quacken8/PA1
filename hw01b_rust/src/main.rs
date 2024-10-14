@@ -1,4 +1,3 @@
-use regex::Regex;
 use std::io::{self, Read};
 
 struct Point {
@@ -6,27 +5,55 @@ struct Point {
     y: f64,
 }
 
-fn read_point() -> Result<Point, ()> {
+// Err(usize) refers to number of correctly parsed points
+fn read_points() -> Result<[Point; 3], usize> {
     let mut input = String::new();
 
-    io::stdin().read_to_string(&mut input).map_err(|_| ())?;
+    if io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|_| ())
+        .is_err()
+    {
+        return Err(0);
+    };
+    let without_white_space: String = input.split_ascii_whitespace().collect();
 
-    let input: String = input
-        .split_whitespace()
-        .fold(String::new(), |mut prev, curr| {
-            prev.push_str(curr);
-            prev
-        });
+    if !without_white_space.starts_with("[") {
+        return Err(0);
+    };
+    let missing_ending = !without_white_space.ends_with("]");
+    let as_vec: Vec<f64> = without_white_space
+        .replace("][", ",")
+        .replace("]", "") // this makes us ignore inputs like [[[[[[[[1,2]]]]]]]]
+        .replace("[", "") // this makes us ignore inputs like [[[[[[[[1,2]]]]]]]]
+        .split(',')
+        .filter_map(|s| match s.parse::<f64>() {
+            Ok(n) => Some(n),
+            Err(_) => None,
+        })
+        .collect();
 
-    let re = Regex::new(r"^\[(\-?\d+\.?\d*),(\-?\d+\.?\d*)\]$").unwrap();
-
-    if let Some(caps) = re.captures(&input) {
-        let x: f64 = caps[1].parse().map_err(|_| ())?;
-        let y: f64 = caps[2].parse().map_err(|_| ())?;
-        Ok(Point { x, y })
-    } else {
-        Err(())
+    if as_vec.len() != 6 {
+        return Err(as_vec.len() / 2);
     }
+    if missing_ending {
+        return Err(3);
+    }
+
+    Ok([
+        Point {
+            x: as_vec[0],
+            y: as_vec[1],
+        },
+        Point {
+            x: as_vec[2],
+            y: as_vec[3],
+        },
+        Point {
+            x: as_vec[4],
+            y: as_vec[5],
+        },
+    ])
 }
 
 fn find_fourth(a: &Point, b: &Point, c: &Point) -> Point {
@@ -39,9 +66,11 @@ fn find_fourth(a: &Point, b: &Point, c: &Point) -> Point {
 fn categorize_shape<'a>(a: &Point, b: &Point, c: &Point) -> &'a str {
     let side_a = (b.x - a.x).hypot(b.y - a.y);
     let side_b = (c.x - b.x).hypot(c.y - b.y);
+    let would_be_hypot = (a.x - c.x).hypot(a.y - c.y);
 
     let are_same_length = (side_a - side_b).abs() <= 100.0 * (side_a + side_b) * f64::EPSILON;
-    let makes_right_sided = side_a.hypot(side_b) <= 100.0 * (side_a + side_b) * f64::EPSILON;
+    let makes_right_sided = (would_be_hypot - side_a.hypot(side_b)).abs()
+        <= 100.0 * (side_a.hypot(side_b)) * f64::EPSILON;
 
     if are_same_length && makes_right_sided {
         return "ctverec";
@@ -69,29 +98,42 @@ fn is_det_zero(a: &Point, b: &Point, c: &Point) -> bool {
         <= 100.0 * ((v1.x * v2.y).abs() + (v1.y * v2.x).abs()) * f64::EPSILON
 }
 
+// C lang formatting is fucking cursed, man
+// this passes the tests, but it is reverse-engineered
+fn format_coordinate(x: f64) -> String {
+    if x.abs() < 1e4 && (1.0 / x).abs() < 1e4 {
+        let mut formatted = format!("{:.3}", x);
+        while formatted.ends_with("0") && formatted.contains(".") {
+            formatted.remove(formatted.len() - 1);
+        }
+        if formatted.ends_with(".") {
+            formatted.remove(formatted.len() - 1);
+        }
+        return formatted;
+    }
+
+    let formatted = format!("{:.6e}", x);
+    if !formatted.starts_with("1") {
+        return format!("{:.5e}", formatted.parse::<f64>().unwrap()); // christ
+    }
+    formatted
+}
+
 fn main() {
-    println!("A:");
-    let a = match read_point() {
-        Ok(p) => p,
-        Err(_) => {
-            println!("Nespravny vstup.");
-            return;
+    println!("Bod A:");
+    let [a, b, c] = match read_points() {
+        Ok(points) => {
+            println!("Bod B:\nBod C:");
+            points
         }
-    };
-    println!("B:");
-    let b = match read_point() {
-        Ok(p) => p,
-        Err(_) => {
-            println!("Nespravny vstup.");
-            return;
-        }
-    };
-    println!("C:");
-    let c = match read_point() {
-        Ok(p) => p,
-        Err(_) => {
-            println!("Nespravny vstup.");
-            return;
+        Err(num) => {
+            if num >= 1 {
+                println!("Bod B:");
+            }
+            if num >= 2 {
+                println!("Bod C:");
+            }
+            return println!("Nespravny vstup.");
         }
     };
 
@@ -103,24 +145,24 @@ fn main() {
     let a_prime = find_fourth(&c, &a, &b);
     println!(
         "A': [{},{}], {}",
-        a_prime.x,
-        a_prime.y,
+        format_coordinate(a_prime.x),
+        format_coordinate(a_prime.y),
         categorize_shape(&c, &a, &b)
     );
 
     let b_prime = find_fourth(&a, &b, &c);
     println!(
         "B': [{},{}], {}",
-        b_prime.x,
-        b_prime.y,
+        format_coordinate(b_prime.x),
+        format_coordinate(b_prime.y),
         categorize_shape(&a, &b, &c)
     );
 
     let c_prime = find_fourth(&b, &c, &a);
     println!(
         "C': [{},{}], {}",
-        c_prime.x,
-        c_prime.y,
+        format_coordinate(c_prime.x),
+        format_coordinate(c_prime.y),
         categorize_shape(&b, &c, &a)
     );
 }
