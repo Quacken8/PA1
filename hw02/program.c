@@ -23,9 +23,8 @@ struct ReadResult readInput()
   {
     eof = 1;
   }
-  else if (read_vals != 4 || closing_bracket != '>' || upper < lower || lower < 0 || upper < 0 || !(opening_symbol == '#' || opening_symbol == '?'))
+  else if (read_vals != 4 || closing_bracket != '>' || upper < lower || lower <= 0 || upper <= 0 || !(opening_symbol == '#' || opening_symbol == '?'))
   {
-    // 77
     success = 0;
   }
 
@@ -40,27 +39,44 @@ struct ReadResult readInput()
   return res;
 }
 
+int gcd(int m, int n)
+{
+  int larger = m > n ? m : n;
+  int smaller = m < n ? m : n;
+  if (smaller == 0)
+    return larger;
+  return gcd(larger % smaller, smaller);
+}
+
 int count_triples(int lower, int upper, int supress_readout)
 {
   int count = 0;
 
-  for (int r = 2; r < upper; r += 2)
+  for (int m = 2; m < sqrt(upper); m++)
   {
-    for (int s = 1; s <= r / sqrt(2); s++)
+    for (int n = 1 + (m % 2); n < m; n += 1 + (m % 2))
     {
-      if ((r * r / 2) % s != 0)
+      if (gcd(m, n) != 1)
         continue;
-      int t = r * r / 2 / s;
-      int a = r + s;
-      int b = r + t;
-      int c = r + s + t;
-      // c > b > a
-      if (c > upper || a < lower)
-        continue;
+      int a_kless = m * m - n * n;
+      int b_kless = 2 * m * n;
+      int c_kless = m * m + n * n;
 
-      if (!supress_readout)
-        printf("* %d %d %d\n", a, b, c);
-      count++;
+      int start_k = lower / (a_kless > b_kless ? b_kless : a_kless);
+      int end_k = upper / c_kless + 1;
+      for (int k = start_k; k <= end_k; k++)
+      {
+        int a = k * a_kless;
+        int b = k * b_kless;
+        int c = k * c_kless;
+        if (c > upper)
+          break;
+        if (a < lower || b < lower)
+          continue;
+        count++;
+        if (!supress_readout)
+          printf("* %d %d %d\n", a, b, c);
+      }
     }
   }
 
