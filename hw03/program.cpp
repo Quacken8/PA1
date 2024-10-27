@@ -311,6 +311,11 @@ int main()
   assert(d.m_Year == 0 && d.m_Month == 0 && d.m_Day == 0);
   d = endDate(makeDate(2024, 10, 27), 5112099, 1, DOW_THU);
   assert(d.m_Year == 100000 && d.m_Month == 1 && d.m_Day == 5);
+  d = endDate(makeDate(4001, 1, 11), 5, 6, DOW_SAT);
+  assert(d.m_Year == 4001 && d.m_Month == 1 && d.m_Day == 20);
+
+  //  = > r = {4001, 1, 20}, s = {4001, 1, 19};
+
   return EXIT_SUCCESS;
 }
 #endif /* __PROGTEST__ */
