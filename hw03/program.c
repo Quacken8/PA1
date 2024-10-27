@@ -186,6 +186,20 @@ unsigned connectionsToday(TDATE today, unsigned perWorkDay, unsigned dowMask)
   return fullAmount;
 }
 
+unsigned bussesPerWeek(unsigned perWorkDay, unsigned dowMask)
+{
+  unsigned bussesPerWeek = 0;
+  for (int i = 0; i <= 4; i++)
+  {
+    bussesPerWeek += (((1 << i) & dowMask) != 0) * perWorkDay;
+  }
+  unsigned fullSat = (((1 << 5) & dowMask) != 0) * perWorkDay;
+  bussesPerWeek += fullSat / 2 + fullSat % 2;
+  unsigned fullSun = (((1 << 6) & dowMask) != 0) * perWorkDay;
+  bussesPerWeek += fullSun / 3 + (fullSun % 3 != 0);
+  return bussesPerWeek;
+}
+
 long long countConnections(TDATE from, TDATE to, unsigned perWorkDay, unsigned dowMask)
 {
   if (isFirstBeforeSecond(to, from) || !isValidDate(from) || !isValidDate(to))
@@ -202,24 +216,36 @@ long long countConnections(TDATE from, TDATE to, unsigned perWorkDay, unsigned d
     newFrom = nextDay(newFrom);
   } while (dayOfWeekShift(newFrom) != dayOfWeekShift(to) + 1);
 
-  unsigned bussesPerWeek = 0;
-  for (int i = 0; i <= 4; i++)
-  {
-    bussesPerWeek += (((1 << i) & dowMask) != 0) * perWorkDay;
-  }
-  unsigned fullSat = (((1 << 5) & dowMask) != 0) * perWorkDay;
-  bussesPerWeek += fullSat / 2 + fullSat % 2;
-  unsigned fullSun = (((1 << 6) & dowMask) != 0) * perWorkDay;
-  bussesPerWeek += fullSun / 3 + (fullSun % 3 != 0);
-
-  count += bussesPerWeek * fullWeeksBetween(from, to);
+  count += bussesPerWeek(perWorkDay, dowMask) * fullWeeksBetween(from, to);
   return count;
 }
 TDATE endDate(TDATE from, long long connections, unsigned perWorkDay, unsigned dowMask)
 {
-  return TDATE{
 
-  };
+  if (!isValidDate(from) || dowMask == 0 || perWorkDay == 0 || connections < connectionsToday(from, perWorkDay, dowMask))
+  {
+    return makeDate(0, 0, 0);
+  }
+
+  TDATE to = from;
+  unsigned estimatedYears = connections / bussesPerWeek(perWorkDay, dowMask) / 54;
+  while (estimatedYears > 0)
+  {
+    to = makeDate(to.m_Year + estimatedYears, to.m_Month, to.m_Day);
+    long long usedUp = countConnections(from, to, perWorkDay, dowMask);
+
+    connections -= usedUp;
+    estimatedYears = connections / bussesPerWeek(perWorkDay, dowMask) / 54;
+    from = to;
+  }
+
+  while (connections >= connectionsToday(to, perWorkDay, dowMask))
+  {
+    connections -= connectionsToday(to, perWorkDay, dowMask);
+    to = nextDay(to);
+  }
+
+  return previousDay(to);
 }
 #ifndef __PROGTEST__
 int main()
@@ -283,6 +309,8 @@ int main()
   assert(d.m_Year == 0 && d.m_Month == 0 && d.m_Day == 0);
   d = endDate(makeDate(2024, 10, 1), 100, 1, 0);
   assert(d.m_Year == 0 && d.m_Month == 0 && d.m_Day == 0);
+  d = endDate(makeDate(2024, 10, 27), 5112099, 1, DOW_THU);
+  assert(d.m_Year == 100000 && d.m_Month == 1 && d.m_Day == 5);
   return EXIT_SUCCESS;
 }
 #endif /* __PROGTEST__ */
