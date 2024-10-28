@@ -60,20 +60,12 @@ bool isValidDate(TDATE date)
 // total fucking woodoo, courtesy of Cheriton School of Computer Science
 int dayOfWeekShift(TDATE date)
 {
-  int d = date.m_Day;
-  int m = date.m_Month - 2 + 12 * (date.m_Month <= 2);
-  int capitalY = date.m_Year - (date.m_Month <= 2);
-  int c = capitalY / 100;
-  int y = capitalY - 100 * c;
 
-  int w = (d + (26 * m - 2) / 10 + y + y / 4 + c / 4 - 2 * c) % 7 - 1;
+  unsigned shiftedMonth = (date.m_Month + 9) % 12 + 3;
+  unsigned Y = date.m_Year - 1;
+  unsigned h = (date.m_Day + (13 * shiftedMonth + 13) / 5 + Y + Y / 4 - Y / 100 + Y / 400 - Y / 4000) % 7;
 
-  if (w < 0)
-  {
-    w = 7 + w;
-  }
-
-  return w % 7;
+  return h;
 }
 
 unsigned numOfMultiples(unsigned from, unsigned to, unsigned multiple)
@@ -314,7 +306,26 @@ int main()
   d = endDate(makeDate(4001, 1, 11), 5, 6, DOW_SAT);
   assert(d.m_Year == 4001 && d.m_Month == 1 && d.m_Day == 20);
 
-  //  = > r = {4001, 1, 20}, s = {4001, 1, 19};
+  assert(countConnections(makeDate(2024, 1, 1), makeDate(2024, 12, 31), 1, DOW_MON) == 52);
+  assert(countConnections(makeDate(2024, 1, 1), makeDate(2024, 12, 31), 1, DOW_MON | DOW_TUE) == 104);
+  assert(countConnections(makeDate(2024, 1, 1), makeDate(2024, 12, 31), 1, DOW_MON | DOW_TUE | DOW_WED) == 156);
+  assert(countConnections(makeDate(2024, 1, 1), makeDate(2024, 12, 31), 1, DOW_MON | DOW_TUE | DOW_WED | DOW_THU) == 208);
+  assert(countConnections(makeDate(2024, 1, 1), makeDate(2024, 12, 31), 1, DOW_MON | DOW_TUE | DOW_WED | DOW_THU | DOW_FRI) == 260);
+
+  d = endDate(makeDate(2024, 1, 1), 52, 1, DOW_MON);
+  assert(d.m_Year == 2024 && d.m_Month == 12 && d.m_Day == 30);
+
+  d = endDate(makeDate(2024, 1, 1), 104, 1, DOW_MON | DOW_TUE);
+  assert(d.m_Year == 2024 && d.m_Month == 12 && d.m_Day == 31);
+
+  d = endDate(makeDate(2024, 1, 1), 156, 1, DOW_MON | DOW_TUE | DOW_WED);
+  assert(d.m_Year == 2024 && d.m_Month == 12 && d.m_Day == 31);
+
+  d = endDate(makeDate(2024, 1, 1), 208, 1, DOW_MON | DOW_TUE | DOW_WED | DOW_THU);
+  assert(d.m_Year == 2024 && d.m_Month == 12 && d.m_Day == 31);
+
+  d = endDate(makeDate(2024, 1, 1), 260, 1, DOW_MON | DOW_TUE | DOW_WED | DOW_THU | DOW_FRI);
+  assert(d.m_Year == 2024 && d.m_Month == 12 && d.m_Day == 31);
 
   return EXIT_SUCCESS;
 }
