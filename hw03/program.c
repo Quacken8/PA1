@@ -74,31 +74,21 @@ unsigned numOfMultiples(unsigned from, unsigned to, unsigned multiple)
 
 unsigned long long intervalLength(TDATE from, TDATE to)
 {
-  unsigned long long distance = 1;
-
-  unsigned fromD = 1;
-  unsigned long long fromAdjust = from.m_Day - fromD;
-
-  unsigned toD = 1;
-  unsigned long long toAdjust = to.m_Day - toD;
-
-  unsigned fromM = from.m_Month;
-  while ((fromM - 1) % 12 + 1 != to.m_Month)
+  unsigned fromY = from.m_Year;
+  unsigned long long fromSinceJesus = from.m_Day + 365 * fromY + (fromY - 1) / 4 - (fromY - 1) / 100 + (fromY - 1) / 400 - (fromY - 1) / 4000;
+  for (int i = from.m_Month - 1; i > 0; i--)
   {
-    distance += daysInAMonth(from.m_Year + (fromM > 12), (fromM - 1) % 12 + 1);
-    fromM++;
+    fromSinceJesus += daysInAMonth(fromY, i);
   }
 
-  unsigned fromY = from.m_Year + (fromM > 12);
-  distance += 365 * (to.m_Year - fromY);
-  distance += numOfMultiples(fromY, to.m_Year, 4);
-  distance -= numOfMultiples(fromY, to.m_Year, 100);
-  distance += numOfMultiples(fromY, to.m_Year, 400);
-  distance -= numOfMultiples(fromY, to.m_Year, 4000);
-  distance += toAdjust;
-  distance -= fromAdjust;
+  unsigned toY = to.m_Year;
+  unsigned long long toSinceJesus = to.m_Day + 365 * toY + (toY - 1) / 4 - (toY - 1) / 100 + (toY - 1) / 400 - (toY - 1) / 4000;
+  for (int i = to.m_Month - 1; i > 0; i--)
+  {
+    toSinceJesus += daysInAMonth(toY, i);
+  }
 
-  return distance;
+  return toSinceJesus - fromSinceJesus + 1;
 }
 
 long long fullWeeksBetween(TDATE from, TDATE to)
@@ -171,9 +161,9 @@ unsigned connectionsToday(TDATE today, unsigned perWorkDay, unsigned dowMask)
   unsigned shift = dayOfWeekShift(today);
   unsigned fullAmount = (((1 << shift) & dowMask) != 0) * perWorkDay;
   if (shift == 5)
-    return fullAmount / 2 + fullAmount % 2;
+    return (fullAmount + 1) / 2;
   if (shift == 6)
-    return fullAmount / 3 + (fullAmount % 3 != 0);
+    return (fullAmount + 2) / 3;
   return fullAmount;
 }
 
@@ -239,6 +229,7 @@ TDATE endDate(TDATE from, long long connections, unsigned perWorkDay, unsigned d
 
   return previousDay(to);
 }
+
 #ifndef __PROGTEST__
 int main()
 {
@@ -328,8 +319,7 @@ int main()
   d = endDate(makeDate(2024, 1, 1), 260, 1, DOW_MON | DOW_TUE | DOW_WED | DOW_THU | DOW_FRI);
   assert(d.m_Year == 2024 && d.m_Month == 12 && d.m_Day == 29);
 
-  endDate(makeDate(3360083, 9, 2), 5882650, 527007, 79);
-  countConnections(makeDate(1231434, 2, 1), makeDate(3587998, 10, 29), 961423, 63);
+  assert(countConnections(makeDate(2033, 8, 25), makeDate(2493, 2, 21), 15, DOW_MON | DOW_TUE | DOW_THU | DOW_FRI | DOW_SUN) == 1558405);
 
   return EXIT_SUCCESS;
 }
