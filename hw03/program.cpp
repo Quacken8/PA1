@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 constexpr unsigned DOW_MON = 0b0000'0001;
 constexpr unsigned DOW_TUE = 0b0000'0010;
@@ -56,33 +57,32 @@ bool isValidDate(TDATE date)
     return false;
   return date.m_Day <= daysInAMonth(date.m_Year, date.m_Month);
 }
+unsigned leapsSinceJesus(unsigned year)
+{
+  return year / 4 - year / 100 + year / 400 - year / 4000;
+}
 
 int dayOfWeekShift(TDATE date)
 {
 
   unsigned shiftedMonth = (date.m_Month + 9) % 12 + 3;
   unsigned Y = date.m_Year - (date.m_Month <= 2);
-  unsigned h = (date.m_Day + (13 * shiftedMonth + 13) / 5 + Y + Y / 4 - Y / 100 + Y / 400 - Y / 4000) % 7;
+  unsigned h = (date.m_Day + (13 * shiftedMonth + 13) / 5 + Y + leapsSinceJesus(Y)) % 7;
 
   return (h + 5) % 7;
-}
-
-unsigned numOfMultiples(unsigned from, unsigned to, unsigned multiple)
-{
-  return (to - from) / multiple + (from != to ? (from % multiple == 0 || to % multiple == 0) : 0);
 }
 
 unsigned long long intervalLength(TDATE from, TDATE to)
 {
   unsigned fromY = from.m_Year;
-  unsigned long long fromSinceJesus = from.m_Day + 365 * fromY + (fromY - 1) / 4 - (fromY - 1) / 100 + (fromY - 1) / 400 - (fromY - 1) / 4000;
+  unsigned long long fromSinceJesus = from.m_Day + 365 * fromY + leapsSinceJesus(fromY - 1);
   for (int i = from.m_Month - 1; i > 0; i--)
   {
     fromSinceJesus += daysInAMonth(fromY, i);
   }
 
   unsigned toY = to.m_Year;
-  unsigned long long toSinceJesus = to.m_Day + 365 * toY + (toY - 1) / 4 - (toY - 1) / 100 + (toY - 1) / 400 - (toY - 1) / 4000;
+  unsigned long long toSinceJesus = to.m_Day + 365 * toY + leapsSinceJesus(toY - 1);
   for (int i = to.m_Month - 1; i > 0; i--)
   {
     toSinceJesus += daysInAMonth(toY, i);
@@ -320,6 +320,81 @@ int main()
   assert(d.m_Year == 2024 && d.m_Month == 12 && d.m_Day == 29);
 
   assert(countConnections(makeDate(2033, 8, 25), makeDate(2493, 2, 21), 15, DOW_MON | DOW_TUE | DOW_THU | DOW_FRI | DOW_SUN) == 1558405);
+
+  const long long MAX_YEAR = 10000;
+  const unsigned TRIALS = 100000;
+  const unsigned MAX_PER_DAY = 100;
+  srand(time(NULL)); // Seed the random number generator
+  unsigned errors = 0;
+  for (unsigned i = 0; i < TRIALS; i++)
+  {
+    unsigned aYear = rand() % (MAX_YEAR - 2000) + 2000;
+    unsigned aMonth = rand() % 12 + 1;
+    unsigned aDay = rand() % daysInAMonth(aYear, aMonth) + 1;
+    TDATE a = makeDate(aYear, aMonth, aDay);
+    unsigned bYear = rand() % (MAX_YEAR - 2000) + 2000;
+    unsigned bMonth = rand() % 12 + 1;
+    unsigned bDay = rand() % daysInAMonth(aYear, aMonth) + 1;
+    TDATE b = makeDate(bYear, bMonth, bDay);
+    unsigned cYear = rand() % (MAX_YEAR - 2000) + 2000;
+    unsigned cMonth = rand() % 12 + 1;
+    unsigned cDay = rand() % daysInAMonth(aYear, aMonth) + 1;
+    TDATE c = makeDate(cYear, cMonth, cDay);
+
+    if (isFirstBeforeSecond(b, a))
+    {
+      TDATE tmp = b;
+      b = a;
+      a = tmp;
+    }
+
+    if (isFirstBeforeSecond(c, b))
+    {
+      TDATE tmp = c;
+      c = b;
+      b = tmp;
+    }
+    if (isFirstBeforeSecond(b, a))
+    {
+      TDATE tmp = b;
+      b = a;
+      a = tmp;
+    }
+    unsigned perWorkDay = rand() % MAX_PER_DAY;
+    unsigned dowMask = rand() % (DOW_ALL + 1);
+
+    long long first = countConnections(a, b, perWorkDay, dowMask);
+    long long second = countConnections(nextDay(b), c, perWorkDay, dowMask);
+    long long whole = countConnections(a, c, perWorkDay, dowMask);
+    TDATE tryC = endDate(a, whole, perWorkDay, dowMask);
+    TDATE actualC = c;
+    while (connectionsToday(actualC, perWorkDay, dowMask) == 0 && dowMask != 0 && perWorkDay != 0)
+    {
+      actualC = nextDay(actualC);
+    }
+
+    if (first + second != whole || !areEqual(c, tryC))
+    {
+      errors++;
+      printf("Parameters:\n");
+      printf("a: %u-%u-%u\n", a.m_Year, a.m_Month, a.m_Day);
+      printf("b: %u-%u-%u\n", b.m_Year, b.m_Month, b.m_Day);
+      printf("c: %u-%u-%u\n", c.m_Year, c.m_Month, c.m_Day);
+      printf("perWorkDay: %d\n", perWorkDay);
+      printf("dowMask: %u\n", dowMask);
+      printf("-------------------\n");
+      printf("Output:\n");
+      printf("first: %lld\n", first);
+      printf("second: %lld\n", second);
+      printf("sum:\t%lld\n", first + second);
+      printf("whole:\t%lld\n", whole);
+      printf("c:\t%u-%u-%u\n", actualC.m_Year, actualC.m_Month, actualC.m_Day);
+      printf("tryC:\t%u-%u-%u\n", tryC.m_Year, tryC.m_Month, tryC.m_Day);
+
+      printf("==================\n");
+    }
+  }
+  printf("found %d errors, error rate of %.2lf %%", errors, 100 * (double)errors / (double)TRIALS);
 
   return EXIT_SUCCESS;
 }
