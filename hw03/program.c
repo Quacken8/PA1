@@ -76,17 +76,13 @@ unsigned long long intervalLength(TDATE from, TDATE to)
 {
   unsigned long long distance = 1;
 
-  unsigned fromD = from.m_Day;
+  unsigned fromD = 1;
+  unsigned long long fromAdjust = from.m_Day - fromD;
 
-  // iterate days till theyre the same
-  while ((fromD - 1) % daysInAMonth(from.m_Year, from.m_Month) + 1 != to.m_Day)
-  {
-    distance++;
-    fromD++;
-  }
+  unsigned toD = 1;
+  unsigned long long toAdjust = to.m_Day - toD;
 
-  // iterate month till theyre the same
-  unsigned fromM = from.m_Month + (fromD > daysInAMonth(from.m_Year, from.m_Month));
+  unsigned fromM = from.m_Month;
   while ((fromM - 1) % 12 + 1 != to.m_Month)
   {
     distance += daysInAMonth(from.m_Year + (fromM > 12), (fromM - 1) % 12 + 1);
@@ -99,6 +95,8 @@ unsigned long long intervalLength(TDATE from, TDATE to)
   distance -= numOfMultiples(fromY, to.m_Year, 100);
   distance += numOfMultiples(fromY, to.m_Year, 400);
   distance -= numOfMultiples(fromY, to.m_Year, 4000);
+  distance += toAdjust;
+  distance -= fromAdjust;
 
   return distance;
 }
@@ -329,6 +327,9 @@ int main()
 
   d = endDate(makeDate(2024, 1, 1), 260, 1, DOW_MON | DOW_TUE | DOW_WED | DOW_THU | DOW_FRI);
   assert(d.m_Year == 2024 && d.m_Month == 12 && d.m_Day == 29);
+
+  endDate(makeDate(3360083, 9, 2), 5882650, 527007, 79);
+  countConnections(makeDate(1231434, 2, 1), makeDate(3587998, 10, 29), 961423, 63);
 
   return EXIT_SUCCESS;
 }
