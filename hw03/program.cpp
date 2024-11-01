@@ -57,59 +57,6 @@ bool isValidDate(TDATE date)
     return false;
   return date.m_Day <= daysInAMonth(date.m_Year, date.m_Month);
 }
-unsigned leapsSinceJesus(unsigned year)
-{
-  return year / 4 - year / 100 + year / 400 - year / 4000;
-}
-
-int dayOfWeekShift(TDATE date)
-{
-
-  unsigned shiftedMonth = (date.m_Month + 9) % 12 + 3;
-  unsigned Y = date.m_Year - (date.m_Month <= 2);
-  unsigned h = (date.m_Day + (13 * shiftedMonth + 13) / 5 + Y + leapsSinceJesus(Y)) % 7;
-
-  return (h + 5) % 7;
-}
-
-unsigned long long intervalLength(TDATE from, TDATE to)
-{
-  unsigned fromY = from.m_Year;
-  unsigned long long fromSinceJesus = from.m_Day + 365 * fromY + leapsSinceJesus(fromY - 1);
-  for (int i = from.m_Month - 1; i > 0; i--)
-  {
-    fromSinceJesus += daysInAMonth(fromY, i);
-  }
-
-  unsigned toY = to.m_Year;
-  unsigned long long toSinceJesus = to.m_Day + 365 * toY + leapsSinceJesus(toY - 1);
-  for (int i = to.m_Month - 1; i > 0; i--)
-  {
-    toSinceJesus += daysInAMonth(toY, i);
-  }
-
-  return toSinceJesus - fromSinceJesus + 1;
-}
-
-long long fullWeeksBetween(TDATE from, TDATE to)
-{
-  return intervalLength(from, to) / 7;
-}
-
-bool isFirstBeforeSecond(TDATE first, TDATE second)
-{
-  if (first.m_Year < second.m_Year)
-    return true;
-  if (first.m_Year > second.m_Year)
-    return false;
-  if (first.m_Month < second.m_Month)
-    return true;
-  if (first.m_Month > second.m_Month)
-    return false;
-  if (first.m_Day < second.m_Day)
-    return true;
-  return false;
-}
 
 TDATE nextDay(TDATE now)
 {
@@ -154,6 +101,76 @@ TDATE previousDay(TDATE now)
 bool areEqual(TDATE a, TDATE b)
 {
   return a.m_Day == b.m_Day && a.m_Month == b.m_Month && a.m_Year == b.m_Year;
+}
+
+unsigned leapsSinceJesus(unsigned year)
+{
+  return year / 4 - year / 100 + year / 400 - year / 4000;
+}
+
+unsigned long long daysSinceJesus(TDATE date)
+{
+  unsigned long long res = date.m_Day + 365 * date.m_Year + leapsSinceJesus(date.m_Year - 1);
+  for (int i = date.m_Month - 1; i > 0; i--)
+  {
+    res += daysInAMonth(date.m_Year, i);
+  }
+  return res;
+}
+
+TDATE jesusToDate(unsigned long long days)
+{
+  unsigned long long allDays = days;
+  TDATE res = makeDate(0, 1, 1);
+  do
+  {
+
+    unsigned long long years = days / 366;
+    res = makeDate(res.m_Year + years, 1, 1);
+    days = allDays - daysSinceJesus(res);
+  } while (days > 366);
+
+  for (; days > 0; days--)
+  {
+    res = nextDay(res);
+  }
+
+  return res;
+}
+
+int dayOfWeekShift(TDATE date)
+{
+
+  unsigned shiftedMonth = (date.m_Month + 9) % 12 + 3;
+  unsigned Y = date.m_Year - (date.m_Month <= 2);
+  unsigned h = (date.m_Day + (13 * shiftedMonth + 13) / 5 + Y + leapsSinceJesus(Y)) % 7;
+
+  return (h + 5) % 7;
+}
+
+unsigned long long intervalLength(TDATE from, TDATE to)
+{
+  return daysSinceJesus(to) - daysSinceJesus(from) + 1;
+}
+
+long long fullWeeksBetween(TDATE from, TDATE to)
+{
+  return intervalLength(from, to) / 7;
+}
+
+bool isFirstBeforeSecond(TDATE first, TDATE second)
+{
+  if (first.m_Year < second.m_Year)
+    return true;
+  if (first.m_Year > second.m_Year)
+    return false;
+  if (first.m_Month < second.m_Month)
+    return true;
+  if (first.m_Month > second.m_Month)
+    return false;
+  if (first.m_Day < second.m_Day)
+    return true;
+  return false;
 }
 
 unsigned connectionsToday(TDATE today, unsigned perWorkDay, unsigned dowMask)
@@ -208,29 +225,118 @@ TDATE endDate(TDATE from, long long connections, unsigned perWorkDay, unsigned d
     return makeDate(0, 0, 0);
   }
 
-  TDATE to = from;
-  unsigned estimatedYears = 10 * connections / bussesPerWeek(perWorkDay, dowMask) / 538;
-  while (estimatedYears > 0)
+  unsigned long long small = daysSinceJesus(from);
+  unsigned long long big = daysSinceJesus(makeDate(1000000000, 12, 31));
+  TDATE guessDate = makeDate(0, 0, 0);
+  long long guess = 0;
+  while (big > small)
   {
-    to = makeDate(to.m_Year + estimatedYears, to.m_Month, to.m_Day);
-    long long usedUp = countConnections(from, to, perWorkDay, dowMask);
-
-    connections -= usedUp;
-    estimatedYears = 10 * connections / bussesPerWeek(perWorkDay, dowMask) / 538;
-    from = nextDay(to);
-    to = from;
+    unsigned long long mid = small + (big - small) / 2;
+    guessDate = jesusToDate(mid);
+    guess = countConnections(from, guessDate, perWorkDay, dowMask);
+    if (guess == connections)
+      break;
+    if (guess < connections)
+      small = mid + 1;
+    else
+      big = mid;
   }
 
-  while (connections >= connectionsToday(to, perWorkDay, dowMask))
+  long long leftover = connections - guess;
+  while (connectionsToday(nextDay(guessDate), perWorkDay, dowMask) <= leftover)
   {
-    connections -= connectionsToday(to, perWorkDay, dowMask);
-    to = nextDay(to);
+    guessDate = nextDay(guessDate);
+    leftover -= connectionsToday(guessDate, perWorkDay, dowMask);
   }
 
-  return previousDay(to);
+  return guessDate;
 }
 
 #ifndef __PROGTEST__
+
+void randomTrials()
+{
+  const long long MAX_YEAR = 10000;
+  const unsigned TRIALS = 100000;
+  const unsigned MAX_PER_DAY = 100;
+  srand(time(NULL));
+  for (unsigned i = 0; i < TRIALS; i++)
+  {
+    unsigned long long d = rand();
+    assert(daysSinceJesus(jesusToDate(d)) == d);
+  }
+  unsigned errors = 0;
+  for (unsigned i = 0; i < TRIALS; i++)
+  {
+    unsigned aYear = rand() % (MAX_YEAR - 2000) + 2000;
+    unsigned aMonth = rand() % 12 + 1;
+    unsigned aDay = rand() % daysInAMonth(aYear, aMonth) + 1;
+    TDATE a = makeDate(aYear, aMonth, aDay);
+    unsigned bYear = rand() % (MAX_YEAR - 2000) + 2000;
+    unsigned bMonth = rand() % 12 + 1;
+    unsigned bDay = rand() % daysInAMonth(aYear, aMonth) + 1;
+    TDATE b = makeDate(bYear, bMonth, bDay);
+    unsigned cYear = rand() % (MAX_YEAR - 2000) + 2000;
+    unsigned cMonth = rand() % 12 + 1;
+    unsigned cDay = rand() % daysInAMonth(aYear, aMonth) + 1;
+    TDATE c = makeDate(cYear, cMonth, cDay);
+
+    if (isFirstBeforeSecond(b, a))
+    {
+      TDATE tmp = b;
+      b = a;
+      a = tmp;
+    }
+
+    if (isFirstBeforeSecond(c, b))
+    {
+      TDATE tmp = c;
+      c = b;
+      b = tmp;
+    }
+    if (isFirstBeforeSecond(b, a))
+    {
+      TDATE tmp = b;
+      b = a;
+      a = tmp;
+    }
+    unsigned perWorkDay = rand() % MAX_PER_DAY;
+    unsigned dowMask = rand() % (DOW_ALL + 1);
+
+    long long first = countConnections(a, b, perWorkDay, dowMask);
+    long long second = countConnections(nextDay(b), c, perWorkDay, dowMask);
+    long long whole = countConnections(a, c, perWorkDay, dowMask);
+    TDATE tryC = endDate(a, whole, perWorkDay, dowMask);
+    TDATE actualC = c;
+    while (connectionsToday(actualC, perWorkDay, dowMask) == 0 && dowMask != 0 && perWorkDay != 0)
+    {
+      actualC = nextDay(actualC);
+    }
+
+    if (first + second != whole || !areEqual(c, tryC))
+    {
+      errors++;
+      printf("Parameters:\n");
+      printf("a: %u-%u-%u\n", a.m_Year, a.m_Month, a.m_Day);
+      printf("b: %u-%u-%u\n", b.m_Year, b.m_Month, b.m_Day);
+      printf("c: %u-%u-%u\n", c.m_Year, c.m_Month, c.m_Day);
+      printf("perWorkDay: %d\n", perWorkDay);
+      printf("dowMask: %u\n", dowMask);
+      printf("-------------------\n");
+      printf("Output:\n");
+      printf("first: %lld\n", first);
+      printf("second: %lld\n", second);
+      printf("sum:\t%lld\n", first + second);
+      printf("whole:\t%lld\n", whole);
+      printf("c:\t%u-%u-%u\n", actualC.m_Year, actualC.m_Month, actualC.m_Day);
+      printf("tryC:\t%u-%u-%u\n", tryC.m_Year, tryC.m_Month, tryC.m_Day);
+
+      printf("==================\n");
+    }
+  }
+  printf("found %d errors, error rate of %.2lf %%", errors, 100 * (double)errors / (double)TRIALS);
+}
+
 int main()
 {
   TDATE d;
@@ -241,6 +347,8 @@ int main()
 
   assert(dayOfWeekShift(makeDate(2024, 10, 26)) == 5);
   assert(dayOfWeekShift(makeDate(2024, 10, 29)) == 1);
+
+  assert(daysSinceJesus(jesusToDate(100000)) == 100000);
 
   assert(intervalLength(makeDate(2024, 8, 26), makeDate(2024, 8, 29)) == 4);
   assert(intervalLength(makeDate(2024, 12, 31), makeDate(2025, 2, 1)) == 33);
@@ -321,80 +429,7 @@ int main()
 
   assert(countConnections(makeDate(2033, 8, 25), makeDate(2493, 2, 21), 15, DOW_MON | DOW_TUE | DOW_THU | DOW_FRI | DOW_SUN) == 1558405);
 
-  const long long MAX_YEAR = 10000;
-  const unsigned TRIALS = 100000;
-  const unsigned MAX_PER_DAY = 100;
-  srand(time(NULL)); // Seed the random number generator
-  unsigned errors = 0;
-  for (unsigned i = 0; i < TRIALS; i++)
-  {
-    unsigned aYear = rand() % (MAX_YEAR - 2000) + 2000;
-    unsigned aMonth = rand() % 12 + 1;
-    unsigned aDay = rand() % daysInAMonth(aYear, aMonth) + 1;
-    TDATE a = makeDate(aYear, aMonth, aDay);
-    unsigned bYear = rand() % (MAX_YEAR - 2000) + 2000;
-    unsigned bMonth = rand() % 12 + 1;
-    unsigned bDay = rand() % daysInAMonth(aYear, aMonth) + 1;
-    TDATE b = makeDate(bYear, bMonth, bDay);
-    unsigned cYear = rand() % (MAX_YEAR - 2000) + 2000;
-    unsigned cMonth = rand() % 12 + 1;
-    unsigned cDay = rand() % daysInAMonth(aYear, aMonth) + 1;
-    TDATE c = makeDate(cYear, cMonth, cDay);
-
-    if (isFirstBeforeSecond(b, a))
-    {
-      TDATE tmp = b;
-      b = a;
-      a = tmp;
-    }
-
-    if (isFirstBeforeSecond(c, b))
-    {
-      TDATE tmp = c;
-      c = b;
-      b = tmp;
-    }
-    if (isFirstBeforeSecond(b, a))
-    {
-      TDATE tmp = b;
-      b = a;
-      a = tmp;
-    }
-    unsigned perWorkDay = rand() % MAX_PER_DAY;
-    unsigned dowMask = rand() % (DOW_ALL + 1);
-
-    long long first = countConnections(a, b, perWorkDay, dowMask);
-    long long second = countConnections(nextDay(b), c, perWorkDay, dowMask);
-    long long whole = countConnections(a, c, perWorkDay, dowMask);
-    TDATE tryC = endDate(a, whole, perWorkDay, dowMask);
-    TDATE actualC = c;
-    while (connectionsToday(actualC, perWorkDay, dowMask) == 0 && dowMask != 0 && perWorkDay != 0)
-    {
-      actualC = nextDay(actualC);
-    }
-
-    if (first + second != whole || !areEqual(c, tryC))
-    {
-      errors++;
-      printf("Parameters:\n");
-      printf("a: %u-%u-%u\n", a.m_Year, a.m_Month, a.m_Day);
-      printf("b: %u-%u-%u\n", b.m_Year, b.m_Month, b.m_Day);
-      printf("c: %u-%u-%u\n", c.m_Year, c.m_Month, c.m_Day);
-      printf("perWorkDay: %d\n", perWorkDay);
-      printf("dowMask: %u\n", dowMask);
-      printf("-------------------\n");
-      printf("Output:\n");
-      printf("first: %lld\n", first);
-      printf("second: %lld\n", second);
-      printf("sum:\t%lld\n", first + second);
-      printf("whole:\t%lld\n", whole);
-      printf("c:\t%u-%u-%u\n", actualC.m_Year, actualC.m_Month, actualC.m_Day);
-      printf("tryC:\t%u-%u-%u\n", tryC.m_Year, tryC.m_Month, tryC.m_Day);
-
-      printf("==================\n");
-    }
-  }
-  printf("found %d errors, error rate of %.2lf %%", errors, 100 * (double)errors / (double)TRIALS);
+  randomTrials();
 
   return EXIT_SUCCESS;
 }
