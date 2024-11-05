@@ -196,18 +196,50 @@ typedef struct TreeNode
   Vehicle *sortedByEnd;
 } TreeNode;
 
+void freeTree(TreeNode *tree)
+{
+  if (tree == NULL)
+    return;
+  if (tree->hasLarger)
+    freeTree(tree->biggerNeighbour);
+  if (tree->hasSmaller)
+    freeTree(tree->smallerNeighbour);
+
+  free(tree->sortedByEnd);
+  free(tree->sortedByStart);
+  free(tree);
+}
+
 TreeNode *constructTree(Vehicle vehicles[], int arrLen, int lower, int upper)
 {
+  Vehicle *smallerArr = (Vehicle *)malloc(arrLen * sizeof(Vehicle));
+  Vehicle *largerArr = (Vehicle *)malloc(arrLen * sizeof(Vehicle));
+  Vehicle *thisArrByFrom = (Vehicle *)malloc(arrLen * sizeof(Vehicle));
+  Vehicle *thisArrByTo = (Vehicle *)malloc(arrLen * sizeof(Vehicle));
+  TreeNode *res = (TreeNode *)malloc(sizeof(TreeNode));
+
+  if (res == NULL || smallerArr == NULL || largerArr == NULL || thisArrByFrom == NULL || thisArrByTo == NULL)
+  {
+    free(res);
+    free(smallerArr);
+    free(largerArr);
+    free(thisArrByFrom);
+    free(thisArrByTo);
+    return NULL;
+  }
   if (arrLen == 1)
   {
     Vehicle v = vehicles[0];
-    TreeNode *res = (TreeNode *)malloc(sizeof(TreeNode));
     res->hasSmaller = false;
     res->hasLarger = false;
     res->thisCenter = (v.availibleTo + v.availibleFrom) / 2;
     res->thisLen = 1;
-    res->sortedByStart = vehicles;
-    res->sortedByEnd = vehicles;
+    res->sortedByStart = thisArrByFrom;
+    res->sortedByEnd = thisArrByTo;
+    res->sortedByStart[0] = v;
+    res->sortedByEnd[0] = v;
+    free(smallerArr);
+    free(largerArr);
     return res;
   }
   int centerDay = (lower + upper) / 2;
@@ -216,11 +248,6 @@ TreeNode *constructTree(Vehicle vehicles[], int arrLen, int lower, int upper)
   int thisLen = 0;
   int smallersUpper = INT_MIN;
   int largersLower = INT_MAX;
-
-  Vehicle *smallerArr = (Vehicle *)malloc(arrLen * sizeof(Vehicle));
-  Vehicle *largerArr = (Vehicle *)malloc(arrLen * sizeof(Vehicle));
-  Vehicle *thisArrByFrom = (Vehicle *)malloc(arrLen * sizeof(Vehicle));
-  Vehicle *thisArrByTo = (Vehicle *)malloc(arrLen * sizeof(Vehicle));
 
   for (int i = 0; i < arrLen; i++)
   {
@@ -253,29 +280,26 @@ TreeNode *constructTree(Vehicle vehicles[], int arrLen, int lower, int upper)
   sortVehicles(thisArrByTo, thisLen, biggerToFirst);
 
   bool hasSmaller = smallerLen != 0;
-  TreeNode *smallerNeighbor = (TreeNode *)malloc(sizeof(TreeNode));
+  TreeNode *smallerNeighbor = NULL;
   if (hasSmaller)
     smallerNeighbor = constructTree(smallerArr, smallerLen, lower, smallersUpper);
 
   bool hasLarger = largerLen != 0;
-  TreeNode *largerNeighbor = (TreeNode *)malloc(sizeof(TreeNode));
+  TreeNode *largerNeighbor = NULL;
   if (hasLarger)
     largerNeighbor = constructTree(largerArr, largerLen, largersLower, upper);
 
-  TreeNode *res = (TreeNode *)malloc(sizeof(TreeNode));
   res->hasSmaller = (smallerLen != 0);
   res->hasLarger = (largerLen != 0);
   res->thisCenter = centerDay;
   res->thisLen = thisLen;
   res->smallerNeighbour = smallerNeighbor;
   res->biggerNeighbour = largerNeighbor;
-  res->sortedByStart = (Vehicle *)malloc(thisLen * sizeof(Vehicle));
-  res->sortedByEnd = (Vehicle *)malloc(thisLen * sizeof(Vehicle));
-  for (int i = 0; i < thisLen; i++)
-  {
-    res->sortedByStart[i] = thisArrByFrom[i];
-    res->sortedByEnd[i] = thisArrByTo[i];
-  }
+  res->sortedByStart = thisArrByFrom;
+  res->sortedByEnd = thisArrByTo;
+
+  free(smallerArr);
+  free(largerArr);
 
   return res;
 }
@@ -401,13 +425,14 @@ int main()
     }
     if (!read.success)
     {
+      freeTree(tree);
       printf("Nespravny vstup.\n");
       return 2;
     }
     solveProblem(read.problem, tree, readVehicles.largestTo);
   }
 
-  // shit frees itself
+  freeTree(tree);
 
   return 0;
 }
