@@ -7,5 +7,5 @@ Konec: 12, cena: 89
 Konec: 15, cena: 101
 Konec: 30, cena: 257
 Prilis velky naklad, nelze odvezt.
-Konec: 4, cena: 24
+Konec: 4, cena: 31
 Konec: 30, cena: 12
