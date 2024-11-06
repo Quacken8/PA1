@@ -12,6 +12,8 @@ typedef struct Vehicle
   long long cost;
 } Vehicle;
 
+static Vehicle vehicles[MAX_CAPACITY];
+
 typedef struct VehicleReadRes
 {
   bool success;
@@ -33,8 +35,6 @@ typedef struct ProblemReadRes
   bool success;
 } ProblemReadRes;
 
-static Vehicle vehicles[MAX_CAPACITY];
-
 long long clamp(long long lo, long long x, long long hi)
 {
   if (x > hi)
@@ -44,7 +44,7 @@ long long clamp(long long lo, long long x, long long hi)
   return x;
 }
 
-int biggerToFirst(const void *elem1, const void *elem2)
+int largerToFirst(const void *elem1, const void *elem2)
 {
   Vehicle a = *((Vehicle *)elem1);
   Vehicle b = *((Vehicle *)elem2);
@@ -70,7 +70,7 @@ void sortVehicles(Vehicle arr[], long long howMany, int (*fun)(const void *, con
   qsort(arr, howMany, sizeof(Vehicle), fun);
 }
 
-VehicleReadRes readVehicleInfo()
+VehicleReadRes readVehicleInfo(Vehicle *arr)
 {
   VehicleReadRes res = {
       .success = false,
@@ -111,7 +111,7 @@ VehicleReadRes readVehicleInfo()
     if (from < smallestFrom)
       smallestFrom = from;
 
-    vehicles[i - 1] = info;
+    arr[i - 1] = info;
     if (endingChar == '}')
       break;
   };
@@ -184,7 +184,8 @@ typedef struct TreeNode
   bool hasSmaller;
   bool hasLarger;
   long long thisCenter;
-  long long thisLen;
+  long long fromLen;
+  long long toLen;
   struct TreeNode *smallerNeighbour;
   struct TreeNode *biggerNeighbour;
   CumulativeWork *sortedByFrom;
@@ -224,6 +225,7 @@ TreeNode *constructTree(Vehicle vehicles[], long long arrLen, long long lower, l
     free(thisArrByTo);
     return NULL;
   }
+
   if (arrLen == 1)
   {
     Vehicle v = vehicles[0];
@@ -237,7 +239,8 @@ TreeNode *constructTree(Vehicle vehicles[], long long arrLen, long long lower, l
     res->hasSmaller = false;
     res->hasLarger = false;
     res->thisCenter = (v.availibleTo + v.availibleFrom) / 2;
-    res->thisLen = 1;
+    res->fromLen = 1;
+    res->toLen = 1;
     res->sortedByFrom = thisArrByFrom;
     res->sortedByTo = thisArrByTo;
     res->sortedByFrom[0] = fromWork;
@@ -245,6 +248,7 @@ TreeNode *constructTree(Vehicle vehicles[], long long arrLen, long long lower, l
     free(smallerArr);
     free(largerArr);
     free(thisArr);
+
     return res;
   }
   long long centerDay = (lower + upper) / 2;
@@ -280,6 +284,9 @@ TreeNode *constructTree(Vehicle vehicles[], long long arrLen, long long lower, l
     }
   }
 
+  long long thisFromLen = 0;
+  long long thisToLen = 0;
+
   if (thisLen != 0)
   {
     sortVehicles(thisArr, thisLen, smallerFromFirst);
@@ -313,8 +320,9 @@ TreeNode *constructTree(Vehicle vehicles[], long long arrLen, long long lower, l
         thisArrByFrom[j] = next;
       }
     }
+    thisFromLen = j + 1;
 
-    sortVehicles(thisArr, thisLen, biggerToFirst);
+    sortVehicles(thisArr, thisLen, largerToFirst);
     CumulativeWork last = {
         .pieces = thisArr[0].capacity,
         .cost = thisArr[0].cost,
@@ -345,7 +353,14 @@ TreeNode *constructTree(Vehicle vehicles[], long long arrLen, long long lower, l
         thisArrByTo[j] = next;
       }
     }
-    thisLen = j + 1;
+    thisToLen = j + 1;
+    for (int i = 0; i < thisToLen / 2; i++)
+    {
+      CumulativeWork thisEl = thisArrByTo[i];
+      CumulativeWork thatEl = thisArrByTo[thisToLen - 1 - i];
+      thisArrByTo[i] = thatEl;
+      thisArrByTo[thisToLen - 1 - i] = thisEl;
+    }
   }
 
   bool hasSmaller = smallerLen != 0;
@@ -361,7 +376,8 @@ TreeNode *constructTree(Vehicle vehicles[], long long arrLen, long long lower, l
   res->hasSmaller = (smallerLen != 0);
   res->hasLarger = (largerLen != 0);
   res->thisCenter = centerDay;
-  res->thisLen = thisLen;
+  res->fromLen = thisFromLen;
+  res->toLen = thisToLen;
   res->smallerNeighbour = smallerNeighbor;
   res->biggerNeighbour = largerNeighbor;
   res->sortedByFrom = thisArrByFrom;
@@ -370,7 +386,6 @@ TreeNode *constructTree(Vehicle vehicles[], long long arrLen, long long lower, l
   free(smallerArr);
   free(largerArr);
   free(thisArr);
-
   return res;
 }
 
@@ -387,20 +402,23 @@ OneDaysWork evaluateDay(long long day, long long leftoverPieces, TreeNode *tree)
       0,
   };
 
-  if (tree->thisCenter == day)
+  if (tree->thisCenter == day && tree->fromLen != 0)
   {
-    res.cost = tree->sortedByFrom[tree->thisLen - 1].cost;
-    res.transportedPieces = tree->sortedByFrom[tree->thisLen - 1].pieces;
+    res.cost = tree->sortedByFrom[tree->fromLen - 1].cost;
+    res.transportedPieces = tree->sortedByFrom[tree->fromLen - 1].pieces;
     return res;
   }
 
   if (day < tree->thisCenter)
   {
-
-    if (day >= tree->sortedByFrom[0].day)
+    if (tree->fromLen != 0 && day >= tree->sortedByFrom[0].day)
     {
-      long long index = binaryFindIndex(day + 1, tree->thisLen, tree->sortedByFrom) - 1;
-      index = clamp(0, index, tree->thisLen);
+      long long index = binaryFindIndex(day, tree->fromLen, tree->sortedByFrom);
+
+      if (tree->sortedByFrom[index].day > day)
+        index--;
+
+      index = clamp(0, index, tree->fromLen);
       res.cost = tree->sortedByFrom[index].cost;
       res.transportedPieces = tree->sortedByFrom[index].pieces;
     }
@@ -416,10 +434,9 @@ OneDaysWork evaluateDay(long long day, long long leftoverPieces, TreeNode *tree)
 
   if (day > tree->thisCenter)
   {
-    if (day <= tree->sortedByTo[0].day)
+    if (tree->toLen != 0 && day <= tree->sortedByTo[tree->toLen - 1].day)
     {
-      long long index = binaryFindIndex(day - 1, tree->thisLen, tree->sortedByTo) - 1;
-      index = clamp(0, index, tree->thisLen);
+      long long index = binaryFindIndex(day, tree->toLen, tree->sortedByTo);
       res.cost = tree->sortedByTo[index].cost;
       res.transportedPieces = tree->sortedByTo[index].pieces;
     }
@@ -436,10 +453,10 @@ OneDaysWork evaluateDay(long long day, long long leftoverPieces, TreeNode *tree)
   return res;
 }
 
-void solveProblem(Problem problem, TreeNode *tree, long long lastDay)
+void solveProblem(Problem problem, TreeNode *tree, long long lastDay, long long firstDay)
 {
   long long leftover = problem.pieces;
-  long long day = problem.day;
+  long long day = problem.day < firstDay ? firstDay : problem.day;
   long long cost = 0;
 
   while (leftover > 0)
@@ -459,9 +476,11 @@ void solveProblem(Problem problem, TreeNode *tree, long long lastDay)
   printf("Konec: %lld, cena: %lld\n", day, cost);
   return;
 };
+
 int main()
 {
-  VehicleReadRes readVehicles = readVehicleInfo();
+
+  VehicleReadRes readVehicles = readVehicleInfo(vehicles);
   if (!readVehicles.success)
   {
     printf("Nespravny vstup.\n");
@@ -484,7 +503,7 @@ int main()
       printf("Nespravny vstup.\n");
       return 2;
     }
-    solveProblem(read.problem, tree, readVehicles.largestTo);
+    solveProblem(read.problem, tree, readVehicles.largestTo, readVehicles.smallestFrom);
   }
 
   freeTree(tree);
