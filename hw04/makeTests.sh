@@ -6,7 +6,7 @@ test_num=1
 
 # Generate random positive integers for data
 generate_random_positive() {
-    echo $((RANDOM % 100000 + 1))
+    echo $((RANDOM % 100000))
 }
 
 # Generate the structured list part of the input
@@ -17,6 +17,7 @@ generate_list_part() {
         a=$(generate_random_positive)
         b=$((a + RANDOM % 100000))  # Ensure b >= a
         c=$(generate_random_positive)
+        ((c=c+1))
         d=$(generate_random_positive)
         list+="[$a-$b,$c,$d]"
         if [ "$i" -lt $((num_cells - 1)) ]; then
@@ -40,10 +41,10 @@ generate_pairs_part() {
 }
 
 # Loop to generate data and compare outputs until 5 differences are found
-while [ "$diff_count" -lt 5 ]; do
+while [ "$diff_count" -lt 1 ]; do
     # Increment the number of cells and pairs as test progresses
-    num_cells=$((test_num * 2))  # Increase cell count with each test
-    num_pairs=$((test_num * 3))  # Increase pairs count with each test
+    num_cells=$((test_num * 4))  # Increase cell count with each test
+    num_pairs=$((test_num * 300))  # Increase pairs count with each test
 
     # Generate input data
     list_part=$(generate_list_part "$num_cells")
@@ -68,7 +69,7 @@ while [ "$diff_count" -lt 5 ]; do
     rm tmp.txt
 
     # Increment test number for next iteration
-    ((test_num++))
+    # ((test_num++))
 done
 
 echo "Script completed with $diff_count differences found."
