@@ -44,7 +44,7 @@ typedef struct CumulativeWork
 static CumulativeWork piecewise[DOUBLE_TROUBLE];
 static CumulativeWork integratedPiecewise[DOUBLE_TROUBLE];
 
-long long min(long long a, long long b)
+int min(int a, int b)
 {
   if (a < b)
     return a;
@@ -272,83 +272,44 @@ int setUpPiecewiseArr(Vehicle *vehiclesByFrom, Vehicle *vehiclesByTo, int vehicl
       .day = -1,
   };
   piecewise[0] = zeroethKnee;
+  Vehicle fromV = vehiclesByFrom[0], toV = vehiclesByTo[0];
+
+  CumulativeWork yesterdaysRes = piecewise[0];
   int fromsIndex = 0;
   int tosIndex = 0;
   int piecewiseIndex = 1;
-  Vehicle fromV = vehiclesByFrom[0], toV = vehiclesByTo[0];
-  CumulativeWork carriedOver = {
-      .pieces = -1,
-      .cost = -1,
-      .day = -1,
-  };
-  CumulativeWork yesterdaysRes = piecewise[0];
-  while (fromsIndex < vehiclesLen || tosIndex < vehiclesLen)
+
+  while (tosIndex < vehiclesLen || fromsIndex < vehiclesLen)
   {
-    long long cost = yesterdaysRes.cost;
-    long long pieces = yesterdaysRes.pieces;
-
-    if (carriedOver.day != -1)
-    {
-      tosIndex++;
-      pieces -= carriedOver.pieces;
-      cost -= carriedOver.cost;
-    }
-
-    if (fromsIndex < vehiclesLen)
-    {
-      fromV = vehiclesByFrom[fromsIndex];
-    }
+    if (tosIndex != vehiclesLen && fromsIndex != vehiclesLen)
+      yesterdaysRes.day = min(toV.availibleTo + 1, fromV.availibleFrom);
+    else if (tosIndex != vehiclesLen)
+      yesterdaysRes.day = toV.availibleTo + 1;
     else
+      yesterdaysRes.day = fromV.availibleFrom;
+
+    while (tosIndex != vehiclesLen && (toV.availibleTo + 1) == yesterdaysRes.day)
     {
-      fromV.availibleFrom = LLONG_MAX;
-    }
-    if (tosIndex < vehiclesLen)
-    {
+      yesterdaysRes.cost -= toV.cost;
+      yesterdaysRes.pieces -= toV.capacity;
+      tosIndex++;
+      if (tosIndex == vehiclesLen)
+        break;
       toV = vehiclesByTo[tosIndex];
     }
-    else
-    {
-      toV.availibleTo = LLONG_MAX;
-    }
 
-    int today;
-    if (carriedOver.day != -1)
+    while (fromsIndex != vehiclesLen && fromV.availibleFrom == yesterdaysRes.day)
     {
-      today = carriedOver.day;
-    }
-    else
-      today = min(fromV.availibleFrom, toV.availibleTo);
-
-    if (fromV.availibleFrom == today)
-    {
+      yesterdaysRes.cost += fromV.cost;
+      yesterdaysRes.pieces += fromV.capacity;
       fromsIndex++;
-      cost += fromV.cost;
-      pieces += fromV.capacity;
-    }
-    if (toV.availibleTo == today)
-    {
-      CumulativeWork carry = {
-          .pieces = toV.capacity,
-          .cost = toV.cost,
-          .day = today + 1,
-      };
-      carriedOver = carry;
+      if (fromsIndex == vehiclesLen)
+        break;
+      fromV = vehiclesByFrom[fromsIndex];
     }
 
-    if (carriedOver.day == today || fromV.availibleFrom == today)
-    {
-      if (carriedOver.day == today)
-        carriedOver.day = -1;
-
-      CumulativeWork todayRes = {
-          .pieces = pieces,
-          .cost = cost,
-          .day = today,
-      };
-      yesterdaysRes = todayRes;
-      piecewise[piecewiseIndex] = todayRes;
-      piecewiseIndex++;
-    }
+    piecewise[piecewiseIndex] = yesterdaysRes;
+    piecewiseIndex++;
   }
 
   return piecewiseIndex;
