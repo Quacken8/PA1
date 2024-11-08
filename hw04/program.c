@@ -97,11 +97,11 @@ VehicleReadRes readVehicleInfo(Vehicle *byFrom, Vehicle *byTo)
   int smallestFrom = INT_MAX;
   int largestTo = INT_MIN;
   char endingChar;
-  int i = 1;
-  for (; i <= MAX_CAPACITY + 1; i++)
+  int i = 0;
+  for (; i <= MAX_CAPACITY; i++)
   {
     // NOLINTNEXTLINE
-    if (scanf(" [ %d - %d , %d , %d ] %c", &from, &to, &capacity, &cost, &endingChar) != 5 || from < 0 || to < 0 || from > to || capacity <= 0 || cost <= 0 || i > MAX_CAPACITY || (endingChar != '}' && endingChar != ','))
+    if (scanf(" [ %d - %d , %d , %d ] %c", &from, &to, &capacity, &cost, &endingChar) != 5 || from < 0 || to < 0 || from > to || capacity <= 0 || cost <= 0 || i == MAX_CAPACITY || (endingChar != '}' && endingChar != ','))
     {
       return res;
     }
@@ -118,14 +118,14 @@ VehicleReadRes readVehicleInfo(Vehicle *byFrom, Vehicle *byTo)
     if (from < smallestFrom)
       smallestFrom = from;
 
-    byFrom[i - 1] = info;
-    byTo[i - 1] = info;
+    byFrom[i] = info;
+    byTo[i] = info;
     if (endingChar == '}')
       break;
   };
 
   res.success = true;
-  res.totalNumber = i;
+  res.totalNumber = i + 1;
   res.largestTo = largestTo;
   res.smallestFrom = smallestFrom;
 
@@ -232,36 +232,29 @@ CumulativeWork getCumWithPieces(long long pieces, int arrayLen, CumulativeWork i
   return valueOnDay(lower, integratedPiecewise, piecewise, arrayLen);
 }
 
-void evaluateDays(int startDay, long long leftoverPieces, CumulativeWork *piecewise, CumulativeWork *integratedPiecewise, int piecewiseLen)
+void solveProblem(Problem problem, int earliestPossibleDay, int lastPossibleDay, CumulativeWork *piecewise, CumulativeWork *integratedPiecewise, int piecewiseLen)
 {
-  CumulativeWork beforeFirstDay = valueOnDay(startDay - 1, integratedPiecewise, piecewise, piecewiseLen);
 
-  CumulativeWork lastDay = getCumWithPieces(beforeFirstDay.pieces + leftoverPieces, piecewiseLen, integratedPiecewise, piecewise);
+  int day = problem.day < earliestPossibleDay ? earliestPossibleDay : problem.day;
 
-  if ((lastDay.pieces - beforeFirstDay.pieces) < leftoverPieces)
+  if (day > lastPossibleDay)
+  {
+    printf("Prilis velky naklad, nelze odvezt.\n");
+    return;
+  }
+
+  CumulativeWork beforeFirstDay = valueOnDay(day - 1, integratedPiecewise, piecewise, piecewiseLen);
+
+  CumulativeWork lastDay = getCumWithPieces(beforeFirstDay.pieces + problem.pieces, piecewiseLen, integratedPiecewise, piecewise);
+
+  if ((lastDay.pieces - beforeFirstDay.pieces) < problem.pieces)
   {
     printf("Prilis velky naklad, nelze odvezt.\n");
   }
   else
   {
-
     printf("Konec: %d, cena: %lld\n", lastDay.day, lastDay.cost - beforeFirstDay.cost);
   }
-};
-
-void solveProblem(Problem problem, int lastDay, int firstDay, CumulativeWork *piecewise, int piecewiseLen)
-{
-  long long leftover = problem.pieces;
-  int day = problem.day < firstDay ? firstDay : problem.day;
-
-  if (day > lastDay)
-  {
-    printf("Prilis velky naklad, nelze odvezt.\n");
-    return;
-  }
-  evaluateDays(day, leftover, piecewise, integratedPiecewise, piecewiseLen);
-
-  return;
 };
 
 int setUpPiecewiseArr(Vehicle *vehiclesByFrom, Vehicle *vehiclesByTo, int vehiclesLen)
@@ -339,8 +332,8 @@ void integratePieceWise(int piecewiseLen)
 
 int main()
 {
-  static Vehicle vehiclesByFrom[MAX_CAPACITY];
-  static Vehicle vehiclesByTo[MAX_CAPACITY];
+  Vehicle vehiclesByFrom[MAX_CAPACITY];
+  Vehicle vehiclesByTo[MAX_CAPACITY];
   VehicleReadRes readVehicles = readVehicleInfo(vehiclesByFrom, vehiclesByTo);
   if (!readVehicles.success)
   {
@@ -366,7 +359,8 @@ int main()
       printf("Nespravny vstup.\n");
       return 2;
     }
-    solveProblem(read.problem, readVehicles.largestTo, readVehicles.smallestFrom, piecewise, pieceWiseLen);
+
+    solveProblem(read.problem, readVehicles.smallestFrom, readVehicles.largestTo, piecewise, integratedPiecewise, pieceWiseLen);
   }
 
   return 0;
