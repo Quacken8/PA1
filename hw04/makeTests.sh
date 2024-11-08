@@ -1,26 +1,23 @@
 #!/bin/bash
 
-# Initialize variables
 diff_count=0
-test_num=1
+test_num=6
 
-# Generate random positive integers for data
 generate_random_positive() {
-    echo $((RANDOM % 100000))
+    echo $(shuf -i 0-2147483647 -n 1 )
 }
 
-# Generate the structured list part of the input
-generate_list_part() {
+generate_vehicles() {
     list="{"
-    num_cells=$1
-    for ((i=0; i<num_cells; i++)); do
+    num_vehicles=$1
+    for ((i=0; i<num_vehicles; i++)); do
         a=$(generate_random_positive)
-        b=$((a + RANDOM % 100000))  # Ensure b >= a
-        c=$(generate_random_positive)
+        b=$((a + generate_random_positive % (2147483647 - a / 3))) 
+        c=$(generate_random_positive % 50)
         ((c=c+1))
-        d=$(generate_random_positive)
+        d=$(generate_random_positive % 50)
         list+="[$a-$b,$c,$d]"
-        if [ "$i" -lt $((num_cells - 1)) ]; then
+        if [ "$i" -lt $((num_vehicles - 1)) ]; then
             list+=","
         fi
     done
@@ -28,11 +25,10 @@ generate_list_part() {
     echo "$list"
 }
 
-# Generate the integer pairs part of the input
-generate_pairs_part() {
-    num_pairs=$1
+generate_orders() {
+    num_orders=$1
     pairs=""
-    for ((i=0; i<num_pairs; i++)); do
+    for ((i=0; i<num_orders; i++)); do
         x=$(generate_random_positive)
         y=$(generate_random_positive)
         pairs+="$x $y"$'\n'
@@ -40,36 +36,31 @@ generate_pairs_part() {
     echo "$pairs"
 }
 
-# Loop to generate data and compare outputs until 5 differences are found
 while [ "$diff_count" -lt 1 ]; do
-    # Increment the number of cells and pairs as test progresses
-    num_cells=$((test_num * 4))  # Increase cell count with each test
-    num_pairs=$((test_num * 300))  # Increase pairs count with each test
+    num_vehicles=$((100001)) 
+    num_orders=$((10000))  
 
-    # Generate input data
-    list_part=$(generate_list_part "$num_cells")
-    pairs_part=$(generate_pairs_part "$num_pairs")
+    list_part=$(generate_vehicles "$num_vehicles")
+    pairs_part=$(generate_orders "$num_orders")
     
-    # Prepare input file
-    input_file=$(printf "tests/%03d0_in.txt" "$test_num")
+    input_file="tests/1000_in.txt"
     echo -e "${list_part}\n${pairs_part}" > "$input_file"
 
-    # Run the reference and attempt programs
-    ref_output=$(printf "tests/%03d0_out.txt" "$test_num")
+    ref_output="tests/1000_out.txt"
     attempt_output="tmp.txt"
     
-    ./reference.out < "$input_file" > "$ref_output"
     ./a.out < "$input_file" > "$attempt_output"
+    ./reference.out < "$input_file" > "$ref_output"
     
-    # Compare outputs
     if ! diff -q "$ref_output" "$attempt_output" > /dev/null; then
         echo "Difference found in test #$test_num"
         ((diff_count++))
     fi
-    rm tmp.txt
+    #rm tmp.txt
 
-    # Increment test number for next iteration
-    # ((test_num++))
+    echo "Test #$test_num with $num_vehicles cells and $num_orders pairs completed."
+
+    ((test_num++))
 done
 
 echo "Script completed with $diff_count differences found."

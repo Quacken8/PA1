@@ -7,18 +7,18 @@
 
 typedef struct Vehicle
 {
-  long long availibleFrom;
-  long long availibleTo;
-  long long capacity;
-  long long cost;
+  int availibleFrom;
+  int availibleTo;
+  int capacity;
+  int cost;
 } Vehicle;
 
 typedef struct VehicleReadRes
 {
   bool success;
-  long long totalNumber;
-  long long smallestFrom;
-  long long largestTo;
+  int totalNumber;
+  int smallestFrom;
+  int largestTo;
 } VehicleReadRes;
 
 typedef struct Problem
@@ -44,9 +44,22 @@ typedef struct CumulativeWork
 static CumulativeWork piecewise[DOUBLE_TROUBLE];
 static CumulativeWork integratedPiecewise[DOUBLE_TROUBLE];
 
+bool isValidVehicle(Vehicle v)
+{
+  return (!(
+      v.availibleFrom < 0 || v.availibleTo < 0 || v.availibleFrom > v.availibleTo || v.capacity <= 0 || v.cost <= 0));
+}
+
 int min(int a, int b)
 {
   if (a < b)
+    return a;
+  return b;
+}
+
+int max(int a, int b)
+{
+  if (a > b)
     return a;
   return b;
 }
@@ -86,49 +99,38 @@ VehicleReadRes readVehicleInfo(Vehicle *byFrom, Vehicle *byTo)
       .largestTo = INT_MIN,
   };
   printf("Moznosti dopravy:\n");
+
   char openingBrace;
   // NOLINTNEXTLINE
   if (scanf(" %c", &openingBrace) != 1 || openingBrace != '{')
-  {
     return res;
+
+  while (true)
+  {
+    if (res.totalNumber > MAX_CAPACITY)
+      return res;
+    Vehicle v;
+    char closingChar;
+    // NOLINTNEXTLINE
+    if (scanf(" [ %d - %d , %d , %d ] %c", &v.availibleFrom, &v.availibleTo, &v.capacity, &v.cost, &closingChar) != 5)
+      return res;
+    if (!isValidVehicle(v))
+      return res;
+
+    res.largestTo = max(res.largestTo, v.availibleTo);
+    res.smallestFrom = min(res.smallestFrom, v.availibleFrom);
+    byFrom[res.totalNumber] = v;
+    byTo[res.totalNumber] = v;
+    res.totalNumber++;
+
+    if (closingChar == '}')
+      break;
+
+    if (closingChar != ',' || res.totalNumber == MAX_CAPACITY)
+      return res;
   }
 
-  int from, to, capacity, cost;
-  int smallestFrom = INT_MAX;
-  int largestTo = INT_MIN;
-  char endingChar;
-  int i = 0;
-  for (; i <= MAX_CAPACITY; i++)
-  {
-    // NOLINTNEXTLINE
-    if (scanf(" [ %d - %d , %d , %d ] %c", &from, &to, &capacity, &cost, &endingChar) != 5 || from < 0 || to < 0 || from > to || capacity <= 0 || cost <= 0 || i == MAX_CAPACITY || (endingChar != '}' && endingChar != ','))
-    {
-      return res;
-    }
-
-    Vehicle info = {
-        .availibleFrom = from,
-        .availibleTo = to,
-        .capacity = capacity,
-        .cost = cost,
-    };
-
-    if (to > largestTo)
-      largestTo = to;
-    if (from < smallestFrom)
-      smallestFrom = from;
-
-    byFrom[i] = info;
-    byTo[i] = info;
-    if (endingChar == '}')
-      break;
-  };
-
   res.success = true;
-  res.totalNumber = i + 1;
-  res.largestTo = largestTo;
-  res.smallestFrom = smallestFrom;
-
   return res;
 }
 
@@ -166,7 +168,7 @@ int binaryFindDay(int query, int arrayLen, CumulativeWork array[])
 
   while (lower < upper)
   {
-    int mid = (lower + upper) / 2;
+    int mid = lower + (upper - lower) / 2;
     int guess = array[mid].day;
     if (query == guess)
     {
@@ -212,7 +214,7 @@ CumulativeWork getCumWithPieces(long long pieces, int arrayLen, CumulativeWork i
 
   while (lower < upper)
   {
-    int mid = (lower + upper) / 2;
+    int mid = lower + (upper - lower) / 2;
     CumulativeWork guess = valueOnDay(mid, integratedPiecewise, piecewise, arrayLen);
 
     if (pieces < guess.pieces)
