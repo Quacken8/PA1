@@ -1,0 +1,3 @@
+Moznosti dopravy:
+Naklad:
+Konec: 2147483648, cena: 42949672956
