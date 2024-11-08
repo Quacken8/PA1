@@ -7,18 +7,18 @@
 
 typedef struct Vehicle
 {
-  int availibleFrom;
-  int availibleTo;
-  int capacity;
-  int cost;
+  long long availibleFrom;
+  long long availibleTo;
+  long long capacity;
+  long long cost;
 } Vehicle;
 
 typedef struct VehicleReadRes
 {
   bool success;
-  int totalNumber;
-  int smallestFrom;
-  int largestTo;
+  long long totalNumber;
+  long long smallestFrom;
+  long long largestTo;
 } VehicleReadRes;
 
 typedef struct Problem
@@ -38,7 +38,7 @@ typedef struct CumulativeWork
 {
   long long pieces;
   long long cost;
-  int day;
+  long long day;
 } CumulativeWork;
 
 static CumulativeWork piecewise[DOUBLE_TROUBLE];
@@ -50,14 +50,14 @@ bool isValidVehicle(Vehicle v)
       v.availibleFrom < 0 || v.availibleTo < 0 || v.availibleFrom > v.availibleTo || v.capacity <= 0 || v.cost <= 0));
 }
 
-int min(int a, int b)
+long long min(long long a, long long b)
 {
   if (a < b)
     return a;
   return b;
 }
 
-int max(int a, int b)
+long long max(long long a, long long b)
 {
   if (a > b)
     return a;
@@ -85,7 +85,7 @@ int smallerToFirst(const void *elem1, const void *elem2)
   return 0;
 }
 
-void sortVehicles(Vehicle arr[], int howMany, int (*fun)(const void *, const void *))
+void sortVehicles(Vehicle arr[], long long howMany, int (*fun)(const void *, const void *))
 {
   qsort(arr, howMany, sizeof(Vehicle), fun);
 }
@@ -112,7 +112,7 @@ VehicleReadRes readVehicleInfo(Vehicle *byFrom, Vehicle *byTo)
     Vehicle v;
     char closingChar;
     // NOLINTNEXTLINE
-    if (scanf(" [ %d - %d , %d , %d ] %c", &v.availibleFrom, &v.availibleTo, &v.capacity, &v.cost, &closingChar) != 5)
+    if (scanf(" [ %lld - %lld , %lld , %lld ] %c", &v.availibleFrom, &v.availibleTo, &v.capacity, &v.cost, &closingChar) != 5)
       return res;
     if (!isValidVehicle(v))
       return res;
@@ -139,9 +139,9 @@ ProblemReadRes readProblem()
   ProblemReadRes res;
   res.success = false;
   res.eof = false;
-  int startingDay, pieces;
+  long long startingDay, pieces;
   // NOLINTNEXTLINE
-  int readVals = scanf(" %d %d", &startingDay, &pieces);
+  long long readVals = scanf(" %lld %lld", &startingDay, &pieces);
   if (readVals == EOF)
   {
     res.eof = true;
@@ -161,15 +161,15 @@ ProblemReadRes readProblem()
   return res;
 }
 
-int binaryFindDay(int query, int arrayLen, CumulativeWork array[])
+long long binaryFindDay(long long query, long long arrayLen, CumulativeWork array[])
 {
-  int lower = 0;
-  int upper = arrayLen - 1;
+  long long lower = 0;
+  long long upper = arrayLen - 1;
 
   while (lower < upper)
   {
-    int mid = lower + (upper - lower) / 2;
-    int guess = array[mid].day;
+    long long mid = lower + (upper - lower) / 2;
+    long long guess = array[mid].day;
     if (query == guess)
     {
       lower = mid;
@@ -188,15 +188,15 @@ int binaryFindDay(int query, int arrayLen, CumulativeWork array[])
   return lower;
 }
 
-CumulativeWork valueOnDay(int day, CumulativeWork *integratedPiecewise, CumulativeWork *piecewise, int len)
+CumulativeWork valueOnDay(long long day, CumulativeWork *integratedPiecewise, CumulativeWork *piecewise, long long len)
 {
-  int index = binaryFindDay(day, len, integratedPiecewise);
+  long long index = binaryFindDay(day, len, integratedPiecewise);
   if (integratedPiecewise[index].day == day || index == 0)
     return integratedPiecewise[index];
 
   CumulativeWork dayBefore = integratedPiecewise[index - 1];
   CumulativeWork derivative = piecewise[index - 1];
-  int interval = (day - dayBefore.day);
+  long long interval = (day - dayBefore.day);
   CumulativeWork res = {
       .pieces = dayBefore.pieces + derivative.pieces * interval,
       .cost = dayBefore.cost + derivative.cost * interval,
@@ -206,15 +206,15 @@ CumulativeWork valueOnDay(int day, CumulativeWork *integratedPiecewise, Cumulati
   return res;
 }
 
-CumulativeWork getCumWithPieces(long long pieces, int arrayLen, CumulativeWork integratedPiecewise[], CumulativeWork piecewise[])
+CumulativeWork getCumWithPieces(long long pieces, long long arrayLen, CumulativeWork integratedPiecewise[], CumulativeWork piecewise[])
 {
 
-  int lower = integratedPiecewise[0].day;
-  int upper = integratedPiecewise[arrayLen - 1].day;
+  long long lower = integratedPiecewise[0].day;
+  long long upper = integratedPiecewise[arrayLen - 1].day;
 
   while (lower < upper)
   {
-    int mid = lower + (upper - lower) / 2;
+    long long mid = lower + (upper - lower) / 2;
     CumulativeWork guess = valueOnDay(mid, integratedPiecewise, piecewise, arrayLen);
 
     if (pieces < guess.pieces)
@@ -234,10 +234,10 @@ CumulativeWork getCumWithPieces(long long pieces, int arrayLen, CumulativeWork i
   return valueOnDay(lower, integratedPiecewise, piecewise, arrayLen);
 }
 
-void solveProblem(Problem problem, int earliestPossibleDay, int lastPossibleDay, CumulativeWork *piecewise, CumulativeWork *integratedPiecewise, int piecewiseLen)
+void solveProblem(Problem problem, long long earliestPossibleDay, long long lastPossibleDay, CumulativeWork *piecewise, CumulativeWork *integratedPiecewise, long long piecewiseLen)
 {
 
-  int day = problem.day < earliestPossibleDay ? earliestPossibleDay : problem.day;
+  long long day = problem.day < earliestPossibleDay ? earliestPossibleDay : problem.day;
 
   if (day > lastPossibleDay)
   {
@@ -255,11 +255,11 @@ void solveProblem(Problem problem, int earliestPossibleDay, int lastPossibleDay,
   }
   else
   {
-    printf("Konec: %d, cena: %lld\n", lastDay.day, lastDay.cost - beforeFirstDay.cost);
+    printf("Konec: %lld, cena: %lld\n", lastDay.day, lastDay.cost - beforeFirstDay.cost);
   }
 };
 
-int setUpPiecewiseArr(Vehicle *vehiclesByFrom, Vehicle *vehiclesByTo, int vehiclesLen)
+long long setUpPiecewiseArr(Vehicle *vehiclesByFrom, Vehicle *vehiclesByTo, long long vehiclesLen)
 {
   CumulativeWork zeroethKnee = {
       .pieces = 0,
@@ -270,9 +270,9 @@ int setUpPiecewiseArr(Vehicle *vehiclesByFrom, Vehicle *vehiclesByTo, int vehicl
   Vehicle fromV = vehiclesByFrom[0], toV = vehiclesByTo[0];
 
   CumulativeWork yesterdaysRes = piecewise[0];
-  int fromsIndex = 0;
-  int tosIndex = 0;
-  int piecewiseIndex = 1;
+  long long fromsIndex = 0;
+  long long tosIndex = 0;
+  long long piecewiseIndex = 1;
 
   while (tosIndex < vehiclesLen || fromsIndex < vehiclesLen)
   {
@@ -310,16 +310,16 @@ int setUpPiecewiseArr(Vehicle *vehiclesByFrom, Vehicle *vehiclesByTo, int vehicl
   return piecewiseIndex;
 }
 
-void integratePieceWise(int piecewiseLen)
+void integratePieceWise(long long piecewiseLen)
 {
   long long lastCost = 0;
   long long lastPieces = 0;
   long long currCost = lastCost;
   long long currPieces = lastPieces;
 
-  for (int i = 1; i < piecewiseLen; i++)
+  for (long long i = 1; i < piecewiseLen; i++)
   {
-    int intervalLen = piecewise[i].day - piecewise[i - 1].day;
+    long long intervalLen = piecewise[i].day - piecewise[i - 1].day;
 
     currCost += (intervalLen - 1) * lastCost + piecewise[i].cost;
     currPieces += (intervalLen - 1) * lastPieces + piecewise[i].pieces;
@@ -345,7 +345,7 @@ int main()
   sortVehicles(vehiclesByFrom, readVehicles.totalNumber, smallerFromFirst);
   sortVehicles(vehiclesByTo, readVehicles.totalNumber, smallerToFirst);
 
-  int pieceWiseLen = setUpPiecewiseArr(vehiclesByFrom, vehiclesByTo, readVehicles.totalNumber);
+  long long pieceWiseLen = setUpPiecewiseArr(vehiclesByFrom, vehiclesByTo, readVehicles.totalNumber);
   integratePieceWise(pieceWiseLen);
 
   printf("Naklad:\n");
