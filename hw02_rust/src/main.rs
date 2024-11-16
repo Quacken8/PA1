@@ -1,6 +1,6 @@
 use std::{
     cmp::{max, min},
-    io::{self, Read},
+    io::{self},
 };
 
 struct ReadRes {
@@ -26,7 +26,7 @@ fn read_range() -> Result<ReadRes, ReadErrors> {
                 return Err(ReadErrors::Eof);
             }
         }
-        Err(e) => return Err(ReadErrors::BadInput),
+        Err(_) => return Err(ReadErrors::BadInput),
     };
     input = input.split_ascii_whitespace().collect();
     let mut chars = input.chars();
