@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#define INITIAL_CAPACITY 64
+
 typedef struct Array
 {
   unsigned len;
@@ -16,6 +18,11 @@ Array array(unsigned initialCapacity)
       .capacity = initialCapacity,
       .data = (unsigned *)malloc(initialCapacity * sizeof(unsigned)),
   };
+  if (arr.data == NULL)
+  {
+    printf("Allocation failed!");
+    exit(2);
+  }
   return arr;
 }
 
@@ -65,11 +72,12 @@ typedef struct ReadRes
   unsigned queryTo;
 } ReadRes;
 
-ReadRes readInput(unsigned lastDay)
+ReadRes readInput(unsigned marketLen)
 {
   char leadingChar;
   unsigned firstNum;
   ReadRes res;
+  res.type = ERROR;
   // NOLINTNEXTLINE
   int readVars = scanf(" %c %u", &leadingChar, &firstNum);
   if (readVars == EOF)
@@ -81,25 +89,17 @@ ReadRes readInput(unsigned lastDay)
     res.newEl = firstNum;
     res.type = NEW_ELEMENT;
   }
-  else if (readVars == 2 && leadingChar == '?')
+  else if (readVars == 2 && leadingChar == '?' && marketLen > 0)
   {
     unsigned secondNum;
     // NOLINTNEXTLINE
     int read = scanf("%u", &secondNum);
-    if (read == 1 && secondNum <= lastDay)
+    if (read == 1 && firstNum <= secondNum && secondNum < marketLen)
     {
       res.queryFrom = firstNum;
       res.queryTo = secondNum;
       res.type = RANGE_QUERY;
     }
-    else
-    {
-      res.type = ERROR;
-    }
-  }
-  else
-  {
-    res.type = ERROR;
   }
 
   return res;
@@ -213,13 +213,12 @@ findTrades(Array market, unsigned from, unsigned to)
 
 int main()
 {
-  unsigned initialCapacity = 64;
-  Array market = array(initialCapacity);
+  Array market = array(INITIAL_CAPACITY);
 
   printf("Ceny, hledani:\n");
   while (true)
   {
-    ReadRes input = readInput(market.len - 1);
+    ReadRes input = readInput(market.len);
 
     QueryRes minmax; // Label followed by a declaration is a C23 extension; not yet sure whether I care about backwards compatibility though
     switch (input.type)
