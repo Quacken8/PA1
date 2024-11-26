@@ -49,6 +49,10 @@ typedef struct PuzzleGrid
 
 Entry *getAt(PuzzleGrid puzzle, size_t x, size_t y)
 {
+  if (x >= puzzle.rowLen || y >= puzzle.arr.len / puzzle.rowLen)
+  {
+    return NULL; // Return NULL if the indices are out of bounds
+  }
   size_t index = y * puzzle.rowLen + x;
   return &puzzle.arr.data[index];
 }
@@ -169,6 +173,8 @@ typedef enum QueryType
   Count,
   CountAndMark,
   Leftover,
+  ReadError,
+  Eof,
 } QueryType;
 
 DEFINE_ARR_HELPERS(char, ChArray);
@@ -179,45 +185,39 @@ typedef struct Query
   ChArray word;
 } Query;
 
-typedef struct QueryReadRes
-{
-  bool success;
-  Query query;
-} QueryReadRes;
-
-QueryReadRes readQuery()
+Query readQuery()
 {
   char definingSymbol;
-  ChArray letters = newChArray();
-  Query query;
-  QueryReadRes res = {
-      .success = false,
-      .query = query,
+  Query res = {
+      .word = newChArray(),
   };
 
   // NOLINTNEXTLINE
-  if (scanf(" %c ", &definingSymbol) != 1)
+  int readSymbol = scanf(" %c ", &definingSymbol);
+  if (readSymbol == EOF)
   {
-    free(letters.data);
+    res.type = Eof;
+    return res;
+  }
+  if (readSymbol != 1)
+  {
+    res.type = ReadError;
     return res;
   }
   switch (definingSymbol)
   {
   case '-':
-    query.type = CountAndMark;
+    res.type = CountAndMark;
     break;
   case '#':
-    query.type = Count;
+    res.type = Count;
     break;
   case '?':
-    query.type = Leftover;
-    res.query = query;
-    res.success = true;
-    free(letters.data);
+    res.type = Leftover;
     return res;
 
   default:
-    free(letters.data);
+    res.type = ReadError;
     return res;
   }
 
@@ -228,19 +228,15 @@ QueryReadRes readQuery()
       break;
     if (!islower(c))
     {
-      free(letters.data);
+      res.type = ReadError;
       return res;
     }
 
-    pushchar(&letters, c);
+    pushchar(&res.word, c);
   }
 
-  if (letters.len > 1)
-    res.success = true;
-  query.word = letters;
-  res.query = query;
-
-  free(letters.data);
+  if (res.word.len <= 1)
+    res.type = ReadError;
   return res;
 }
 
@@ -268,33 +264,28 @@ void printLeftovers(PuzzleGrid puzzle)
 
 bool checkAlongDirection(bool mark, ChArray word, PuzzleGrid puzzle, Coordinate coordinate, int xDirection, int yDirection)
 {
-  // if the word wouldnt fit along the direction no need to check
-  if (coordinate.x < -xDirection * word.len || coordinate.x + xDirection * word.len > puzzle.rowLen - 1) // TODO check that the type casting won't fuck you over
-    return false;
-  size_t colLen = puzzle.arr.len / puzzle.rowLen;
-  if (coordinate.y < -yDirection * puzzle.rowLen * word.len || coordinate.y + yDirection * colLen * word.len > colLen - 1) // TODO check that the type casting won't fuck you over
+  //  if the word wouldnt fit along the direction no need to check
+  if (getAt(puzzle, coordinate.x + xDirection * word.len, coordinate.y + yDirection * word.len) == NULL)
     return false;
 
-  bool match = true;
   for (size_t j = 1; j < word.len; j++)
   {
     char wordLetter = word.data[j];
-    char puzzleLetter = getAt(puzzle, coordinate.x + xDirection * j, coordinate.y + yDirection * j)->letter;
-    if (puzzleLetter != wordLetter)
+    Entry *e = getAt(puzzle, coordinate.x + xDirection * j, coordinate.y + yDirection * j);
+    if (e == NULL || e->letter != wordLetter)
     {
-      match = false;
-      break;
+      return false;
     }
   }
 
-  if (mark && match)
+  if (mark)
   {
     for (size_t j = 0; j < word.len; j++)
     {
       getAt(puzzle, coordinate.x + xDirection * j, coordinate.y + yDirection * j)->marked = true;
     }
   }
-  return match;
+  return true;
 }
 
 unsigned findWords(ChArray word, bool markFound, PuzzleGrid puzzle, CoordinateArray letterMap[])
@@ -320,6 +311,18 @@ unsigned findWords(ChArray word, bool markFound, PuzzleGrid puzzle, CoordinateAr
   return res;
 }
 
+int error(PuzzleReadRes readPuzzle)
+{
+  printf("Nespravny vstup.\n");
+  for (int i = 0; i < 26; i++)
+  {
+    free(readPuzzle.letterMap[i].data);
+  }
+  free(readPuzzle.letterMap);
+  free(readPuzzle.puzzle.arr.data);
+  return 1;
+}
+
 int main()
 {
 
@@ -327,21 +330,38 @@ int main()
   PuzzleReadRes puzzleRead = readPuzzle();
   if (!puzzleRead.success)
   {
-    printf("Nespravny vstup.\n");
-    for (int i = 0; i < 26; i++)
-    {
-      free(puzzleRead.letterMap[i].data);
-    }
-    free(puzzleRead.letterMap);
-    free(puzzleRead.puzzle.arr.data);
-    return 1;
+    return error(puzzleRead);
   }
 
-  for (int i = 0; i < 26; i++)
+  while (true)
   {
-    free(puzzleRead.letterMap[i].data);
+    Query query = readQuery();
+    bool mark = false;
+    unsigned occurances;
+    switch (query.type)
+    {
+    case CountAndMark:
+      mark = true;
+    case Count:
+      occurances = findWords(query.word, mark, puzzleRead.puzzle, puzzleRead.letterMap);
+      printf("%s: %dx\n", query.word.data, occurances);
+      break;
+    case Leftover:
+      printf("Tajenka:\n");
+      printLeftovers(puzzleRead.puzzle);
+      break;
+    case Eof:
+      for (int i = 0; i < 26; i++)
+      {
+        free(puzzleRead.letterMap[i].data);
+      }
+      free(puzzleRead.letterMap);
+      free(puzzleRead.puzzle.arr.data);
+      return 0;
+    case ReadError:
+      return error(puzzleRead);
+    }
+
+    free(query.word.data);
   }
-  free(puzzleRead.letterMap);
-  free(puzzleRead.puzzle.arr.data);
-  return 0;
 }
