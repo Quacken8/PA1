@@ -241,6 +241,7 @@ QueryType readQuery(ChArray *word)
   }
 
   word->len = 0;
+  size_t index = 0;
   while (true)
   {
     char c = getchar();
@@ -252,7 +253,7 @@ QueryType readQuery(ChArray *word)
       return res;
     }
 
-    pushcharAt(word, c, word->len++);
+    pushcharAt(word, c, index++);
   }
 
   if (word->len <= 1)
