@@ -109,7 +109,7 @@ typedef enum LineReadRes
 LineReadRes readLine(CoordinateArray letterMap[26], PuzzleGrid *puzzle, bool isFirstLine)
 {
   bool readAtLeastOneChar = false;
-
+  size_t lenBefore = puzzle->arr.len;
   while (true)
   {
     char c = getchar();
@@ -138,9 +138,10 @@ LineReadRes readLine(CoordinateArray letterMap[26], PuzzleGrid *puzzle, bool isF
     };
     pushEntry(&puzzle->arr, newLetter);
   }
-
   if (!readAtLeastOneChar)
     return EndOfPuzzle;
+  if (!isFirstLine && puzzle->arr.len - lenBefore != puzzle->rowLen)
+    return Error;
   return Ok;
 }
 
