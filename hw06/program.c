@@ -5,11 +5,6 @@
 
 #define INITIAL_CAPACITY 32
 
-#define INIT_ARRAY(type, array)        \
-  (array).len = 0;                     \
-  (array).capacity = INITIAL_CAPACITY; \
-  (array).data = (type *)malloc(INITIAL_CAPACITY * sizeof(type));
-
 #define DEFINE_ARR_HELPERS(elementType, arrWrapperName)                                   \
   typedef struct arrWrapperName                                                           \
   {                                                                                       \
@@ -20,7 +15,14 @@
   arrWrapperName new##arrWrapperName()                                                    \
   {                                                                                       \
     arrWrapperName res;                                                                   \
-    INIT_ARRAY(elementType, res);                                                         \
+    res.len = 0;                                                                          \
+    res.capacity = INITIAL_CAPACITY;                                                      \
+    res.data = (elementType *)malloc(INITIAL_CAPACITY * sizeof(elementType));             \
+    if (res.data == NULL)                                                                 \
+    {                                                                                     \
+      printf("Allocation error!!\n");                                                     \
+      exit(1);                                                                            \
+    }                                                                                     \
     return res;                                                                           \
   }                                                                                       \
   void push##elementType(arrWrapperName *arr, elementType newEl)                          \
@@ -29,6 +31,11 @@
     {                                                                                     \
       arr->capacity *= 2;                                                                 \
       arr->data = (elementType *)realloc(arr->data, arr->capacity * sizeof(elementType)); \
+      if (arr->data == NULL)                                                              \
+      {                                                                                   \
+        printf("Allocation error!!\n");                                                   \
+        exit(1);                                                                          \
+      }                                                                                   \
     }                                                                                     \
     arr->data[arr->len++] = newEl;                                                        \
   }
@@ -68,6 +75,11 @@ DEFINE_ARR_HELPERS(Coordinate, CoordinateArray);
 CoordinateArray *newLetterMap()
 {
   CoordinateArray *res = (CoordinateArray *)malloc(26 * sizeof(CoordinateArray));
+  if (res == NULL)
+  {
+    printf("Allocation error!!\n");
+    exit(1);
+  }
 
   for (int i = 0; i < 26; i++)
   {
@@ -91,7 +103,7 @@ typedef enum LineReadRes
   Ok,
 } LineReadRes;
 
-LineReadRes readLine(CoordinateArray *letterMap[26], PuzzleGrid *puzzle, bool isFirstLine)
+LineReadRes readLine(CoordinateArray letterMap[26], PuzzleGrid *puzzle, bool isFirstLine)
 {
   char c;
   bool readAtLeastOneChar = false;
@@ -118,7 +130,7 @@ LineReadRes readLine(CoordinateArray *letterMap[26], PuzzleGrid *puzzle, bool is
           .x = isFirstLine ? puzzle->arr.len : puzzle->arr.len % puzzle->rowLen,
           .y = isFirstLine ? 0 : puzzle->arr.len / puzzle->rowLen,
       };
-      pushCoordinate(letterMap[c - 'a'], coor);
+      pushCoordinate(&letterMap[c - 'a'], coor);
     }
     Entry newLetter = {
         .letter = c,
@@ -145,7 +157,7 @@ PuzzleReadRes readPuzzle()
       .letterMap = letterMap,
   };
 
-  LineReadRes firstRead = readLine(&res.letterMap, &res.puzzle, true);
+  LineReadRes firstRead = readLine(res.letterMap, &res.puzzle, true);
   if (firstRead != Ok)
   {
     return res; // TODO check how to handle empty input
@@ -155,7 +167,7 @@ PuzzleReadRes readPuzzle()
 
   while (true)
   {
-    LineReadRes lineRead = readLine(&res.letterMap, &res.puzzle, false);
+    LineReadRes lineRead = readLine(res.letterMap, &res.puzzle, false);
     if (lineRead == Error)
     {
       return res;
@@ -179,48 +191,58 @@ typedef enum QueryType
 
 DEFINE_ARR_HELPERS(char, ChArray);
 
-typedef struct Query
+void printCharray(ChArray arr)
 {
-  QueryType type;
-  ChArray word;
-} Query;
+  for (size_t i = 0; i < arr.len; i++)
+  {
+    printf("%c", arr.data[i]);
+  }
+}
 
-Query readQuery()
+void pushcharAt(ChArray *arr, char c, size_t index)
+{
+  if (index < arr->len)
+    arr->data[index] = c;
+  else
+    pushchar(arr, c);
+}
+
+QueryType readQuery(ChArray *word)
 {
   char definingSymbol;
-  Query res = {
-      .word = newChArray(),
-  };
+  QueryType res = ReadError;
 
   // NOLINTNEXTLINE
-  int readSymbol = scanf(" %c ", &definingSymbol);
+  int readSymbol = scanf(" %c", &definingSymbol);
   if (readSymbol == EOF)
   {
-    res.type = Eof;
+    res = Eof;
     return res;
   }
   if (readSymbol != 1)
   {
-    res.type = ReadError;
+    res = ReadError;
     return res;
   }
   switch (definingSymbol)
   {
   case '-':
-    res.type = CountAndMark;
+    res = CountAndMark;
+    scanf(" ");
     break;
   case '#':
-    res.type = Count;
+    res = Count;
+    scanf(" ");
     break;
   case '?':
-    res.type = Leftover;
+    res = Leftover;
     return res;
-
   default:
-    res.type = ReadError;
+    res = ReadError;
     return res;
   }
 
+  word->len = 0;
   while (true)
   {
     char c = getchar();
@@ -228,15 +250,15 @@ Query readQuery()
       break;
     if (!islower(c))
     {
-      res.type = ReadError;
+      res = ReadError;
       return res;
     }
 
-    pushchar(&res.word, c);
+    pushcharAt(word, c, word->len++);
   }
 
-  if (res.word.len <= 1)
-    res.type = ReadError;
+  if (word->len <= 1)
+    res = ReadError;
   return res;
 }
 
@@ -260,15 +282,17 @@ void printLeftovers(PuzzleGrid puzzle)
       }
     }
   }
+  printf("\n");
 }
 
 bool checkAlongDirection(bool mark, ChArray word, PuzzleGrid puzzle, Coordinate coordinate, int xDirection, int yDirection)
 {
   //  if the word wouldnt fit along the direction no need to check
-  if (getAt(puzzle, coordinate.x + xDirection * word.len, coordinate.y + yDirection * word.len) == NULL)
+  Entry *lastLetter = getAt(puzzle, coordinate.x + xDirection * (word.len - 1), coordinate.y + yDirection * (word.len - 1));
+  if (lastLetter == NULL || lastLetter->letter != word.data[word.len - 1])
     return false;
 
-  for (size_t j = 1; j < word.len; j++)
+  for (size_t j = 1; j < word.len - 1; j++)
   {
     char wordLetter = word.data[j];
     Entry *e = getAt(puzzle, coordinate.x + xDirection * j, coordinate.y + yDirection * j);
@@ -333,18 +357,21 @@ int main()
     return error(puzzleRead);
   }
 
+  ChArray word = newChArray();
   while (true)
   {
-    Query query = readQuery();
+    QueryType query = readQuery(&word);
     bool mark = false;
     unsigned occurances;
-    switch (query.type)
+    switch (query)
     {
     case CountAndMark:
       mark = true;
+      // fall through
     case Count:
-      occurances = findWords(query.word, mark, puzzleRead.puzzle, puzzleRead.letterMap);
-      printf("%s: %dx\n", query.word.data, occurances);
+      occurances = findWords(word, mark, puzzleRead.puzzle, puzzleRead.letterMap);
+      printCharray(word);
+      printf(": %dx\n", occurances);
       break;
     case Leftover:
       printf("Tajenka:\n");
@@ -357,11 +384,11 @@ int main()
       }
       free(puzzleRead.letterMap);
       free(puzzleRead.puzzle.arr.data);
+      free(word.data);
       return 0;
     case ReadError:
+      free(word.data);
       return error(puzzleRead);
     }
-
-    free(query.word.data);
   }
 }
