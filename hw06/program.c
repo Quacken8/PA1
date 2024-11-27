@@ -46,19 +46,22 @@ typedef struct Entry
   bool marked;
 } Entry;
 
-DEFINE_ARR_HELPERS(Entry, PuzzleLine);
+DEFINE_ARR_HELPERS(Entry, EntryArr);
 
 typedef struct PuzzleGrid
 {
   size_t rowLen;
-  PuzzleLine arr;
+  EntryArr arr;
 } PuzzleGrid;
 
+/**
+ * @returns pointer at an entry in the puzzle or NULL if the coordinates are out of bounds
+ */
 Entry *getAt(PuzzleGrid puzzle, size_t x, size_t y)
 {
   if (x >= puzzle.rowLen || y >= puzzle.arr.len / puzzle.rowLen)
   {
-    return NULL; // Return NULL if the indices are out of bounds
+    return NULL;
   }
   size_t index = y * puzzle.rowLen + x;
   return &puzzle.arr.data[index];
@@ -74,14 +77,14 @@ DEFINE_ARR_HELPERS(Coordinate, CoordinateArray);
 
 CoordinateArray *newLetterMap()
 {
-  CoordinateArray *res = (CoordinateArray *)malloc(26 * sizeof(CoordinateArray));
+  CoordinateArray *res = (CoordinateArray *)malloc(('z' - 'a' + 1) * sizeof(CoordinateArray));
   if (res == NULL)
   {
     printf("Allocation error!!\n");
     exit(1);
   }
 
-  for (int i = 0; i < 26; i++)
+  for (int i = 0; i < ('z' - 'a' + 1); i++)
   {
     res[i] = newCoordinateArray();
   }
@@ -105,21 +108,18 @@ typedef enum LineReadRes
 
 LineReadRes readLine(CoordinateArray letterMap[26], PuzzleGrid *puzzle, bool isFirstLine)
 {
-  char c;
   bool readAtLeastOneChar = false;
 
   while (true)
   {
-    // NOLINTNEXTLINE
-    if (scanf("%c", &c) != 1)
-      return Error;
+    char c = getchar();
 
     if (c == '\n')
       break;
 
     readAtLeastOneChar = true;
 
-    if ((c != '.') && (c < 'a' || c > 'z'))
+    if ((c != '.') && !islower(c))
     {
       return Error;
     }
@@ -148,7 +148,7 @@ PuzzleReadRes readPuzzle()
 {
   PuzzleGrid puzzle = {
       .rowLen = 0,
-      .arr = newPuzzleLine(),
+      .arr = newEntryArr(),
   };
   CoordinateArray *letterMap = newLetterMap();
   PuzzleReadRes res = {
@@ -160,7 +160,7 @@ PuzzleReadRes readPuzzle()
   LineReadRes firstRead = readLine(res.letterMap, &res.puzzle, true);
   if (firstRead != Ok)
   {
-    return res; // TODO check how to handle empty input
+    return res;
   }
 
   res.puzzle.rowLen = res.puzzle.arr.len;
@@ -209,21 +209,15 @@ void pushcharAt(ChArray *arr, char c, size_t index)
 
 QueryType readQuery(ChArray *word)
 {
-  char definingSymbol;
   QueryType res = ReadError;
 
-  // NOLINTNEXTLINE
-  int readSymbol = scanf(" %c", &definingSymbol);
-  if (readSymbol == EOF)
+  char definingSymbol = getchar();
+  if (definingSymbol == EOF)
   {
     res = Eof;
     return res;
   }
-  if (readSymbol != 1)
-  {
-    res = ReadError;
-    return res;
-  }
+
   switch (definingSymbol)
   {
   case '-':
@@ -235,7 +229,11 @@ QueryType readQuery(ChArray *word)
     scanf(" ");
     break;
   case '?':
-    res = Leftover;
+    definingSymbol = getchar();
+    if (definingSymbol == '\n')
+      res = Leftover;
+    else
+      res = ReadError;
     return res;
   default:
     res = ReadError;
@@ -282,7 +280,8 @@ void printLeftovers(PuzzleGrid puzzle)
       }
     }
   }
-  printf("\n");
+  if (printedLetters != 0)
+    printf("\n");
 }
 
 bool checkAlongDirection(bool mark, ChArray word, PuzzleGrid puzzle, Coordinate coordinate, int xDirection, int yDirection)
