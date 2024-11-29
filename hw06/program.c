@@ -91,6 +91,7 @@ Entry *getAt(PuzzleGrid puzzle, size_t x, size_t y, bool buildMode)
   return &puzzle.arr.data[index];
 }
 
+// Thought this would help with types, but you can't assign -1 to DirComponent ;-;
 typedef enum
 {
   ONE = 1,
@@ -143,6 +144,14 @@ LetterPairArray *getLetterPairs(char first, char second, LetterPairArray *letter
   return &letterMap[firstIndex * numOfLetters + secondIndex];
 }
 
+/**
+ * Given a newly added letter and its position in the puzzle this adds it as a pair with its northwestern neighbors to the letter map
+ * @param thisLetter letter you're currently on
+ * @param xIndex x position of it in the grid
+ * @param yIndex y position of it in the grid
+ * @param puzzle the puzzle grid
+ * @param letterMap the letter map the new pair gets appended to
+ */
 void addLetterPairs(char thisLetter, size_t xIndex, size_t yIndex, PuzzleGrid puzzle, LetterPairArray *letterMap)
 {
 
