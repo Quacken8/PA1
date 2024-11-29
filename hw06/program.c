@@ -64,11 +64,26 @@ typedef struct PuzzleGrid
 } PuzzleGrid;
 
 /**
+ * @param buildMode if true it is assumed that you may be accessing elements of a yet unfinished line of the puzzle
  * @returns a pointer at an entry in the puzzle or NULL if the coordinates are out of bounds
  */
-Entry *getAt(PuzzleGrid puzzle, size_t x, size_t y)
+Entry *getAt(PuzzleGrid puzzle, size_t x, size_t y, bool buildMode)
 {
-  if (x >= puzzle.rowLen || y >= puzzle.arr.len / puzzle.rowLen)
+
+  bool outOfBounds;
+  if (buildMode)
+  {
+    if (puzzle.rowLen == 0)
+      outOfBounds = x > puzzle.arr.len || y != 0;
+    else
+    {
+      outOfBounds = x >= puzzle.rowLen || y >= (puzzle.arr.len + puzzle.rowLen - 1) / puzzle.rowLen;
+    }
+  }
+  else
+    outOfBounds = x >= puzzle.rowLen || (y >= puzzle.arr.len / puzzle.rowLen);
+
+  if (outOfBounds)
   {
     return NULL;
   }
@@ -76,36 +91,146 @@ Entry *getAt(PuzzleGrid puzzle, size_t x, size_t y)
   return &puzzle.arr.data[index];
 }
 
-typedef struct Coordinate
+typedef enum
 {
-  size_t x;
-  size_t y;
-} Coordinate;
+  ONE = 1,
+  ZERO = 0,
+  M_ONE = -1,
+} DirComponent;
 
-DEFINE_ARR_HELPERS(Coordinate, CoordinateArray);
-
-CoordinateArray *newLetterMap()
+typedef struct LetterPair
 {
-  CoordinateArray *res = (CoordinateArray *)malloc(('z' - 'a' + 1) * sizeof(CoordinateArray));
+  size_t xIndex;
+  size_t yIndex;
+  DirComponent xDir;
+  DirComponent yDir;
+} LetterPair;
+
+DEFINE_ARR_HELPERS(LetterPair, LetterPairArray);
+
+LetterPairArray *newLetterMap()
+{
+  size_t len = ('z' - 'a' + 1) * ('z' - 'a' + 1);
+  LetterPairArray *res = (LetterPairArray *)malloc(len * sizeof(LetterPairArray));
   if (res == NULL)
   {
     printf("Allocation error!!\n");
     exit(1);
   }
 
-  for (int i = 0; i < ('z' - 'a' + 1); i++)
+  for (size_t i = 0; i < len; i++)
   {
-    res[i] = newCoordinateArray();
+    res[i] = newLetterPairArray();
   }
 
   return res;
+}
+
+void freeLetterMap(LetterPairArray *letterMap)
+{
+  for (int i = 0; i < ('z' - 'a' + 1) * ('z' - 'a' + 1); i++)
+  {
+    free(letterMap[i].data);
+  }
+  free(letterMap);
+}
+
+LetterPairArray *getLetterPairs(char first, char second, LetterPairArray *letterMap)
+{
+  size_t firstIndex = first - 'a';
+  size_t secondIndex = second - 'a';
+  size_t numOfLetters = ('z' - 'a' + 1);
+  return &letterMap[firstIndex * numOfLetters + secondIndex];
+}
+
+void addLetterPairs(char thisLetter, size_t xIndex, size_t yIndex, PuzzleGrid puzzle, LetterPairArray *letterMap)
+{
+
+  // WEST
+  Entry *otherLetter = getAt(puzzle, xIndex - 1, yIndex, true);
+  if (otherLetter != NULL && otherLetter->letter != '.')
+  {
+    LetterPair newFrontPair = {
+        .xIndex = xIndex,
+        .yIndex = yIndex,
+        .xDir = M_ONE,
+        .yDir = ZERO,
+    };
+    pushLetterPair(getLetterPairs(thisLetter, otherLetter->letter, letterMap), newFrontPair);
+    LetterPair newBackPair = {
+        .xIndex = xIndex - 1,
+        .yIndex = yIndex,
+        .xDir = ONE,
+        .yDir = ZERO,
+    };
+    pushLetterPair(getLetterPairs(otherLetter->letter, thisLetter, letterMap), newBackPair);
+  }
+  // NORTH WEST
+  otherLetter = getAt(puzzle, xIndex - 1, yIndex - 1, true);
+  if (otherLetter != NULL && otherLetter->letter != '.')
+  {
+    LetterPair newFrontPair = {
+        .xIndex = xIndex,
+        .yIndex = yIndex,
+        .xDir = M_ONE,
+        .yDir = M_ONE,
+    };
+    pushLetterPair(getLetterPairs(thisLetter, otherLetter->letter, letterMap), newFrontPair);
+    LetterPair newBackPair = {
+        .xIndex = xIndex - 1,
+        .yIndex = yIndex - 1,
+        .xDir = ONE,
+        .yDir = ONE,
+    };
+    pushLetterPair(getLetterPairs(otherLetter->letter, thisLetter, letterMap), newBackPair);
+  }
+
+  // NORTH
+  otherLetter = getAt(puzzle, xIndex, yIndex - 1, true);
+  if (otherLetter != NULL && otherLetter->letter != '.')
+  {
+    LetterPair newFrontPair = {
+        .xIndex = xIndex,
+        .yIndex = yIndex,
+        .xDir = ZERO,
+        .yDir = M_ONE,
+    };
+    pushLetterPair(getLetterPairs(thisLetter, otherLetter->letter, letterMap), newFrontPair);
+    LetterPair newBackPair = {
+        .xIndex = xIndex,
+        .yIndex = yIndex - 1,
+        .xDir = ZERO,
+        .yDir = ONE,
+    };
+    pushLetterPair(getLetterPairs(otherLetter->letter, thisLetter, letterMap), newBackPair);
+  }
+
+  // NORTH EAST
+  otherLetter = getAt(puzzle, xIndex + 1, yIndex - 1, true);
+  if (otherLetter != NULL && otherLetter->letter != '.')
+  {
+    LetterPair newFrontPair = {
+        .xIndex = xIndex,
+        .yIndex = yIndex,
+        .xDir = ONE,
+        .yDir = M_ONE,
+    };
+    pushLetterPair(getLetterPairs(thisLetter, otherLetter->letter, letterMap), newFrontPair);
+    LetterPair newBackPair = {
+        .xIndex = xIndex + 1,
+        .yIndex = yIndex - 1,
+        .xDir = M_ONE,
+        .yDir = ONE,
+    };
+    pushLetterPair(getLetterPairs(otherLetter->letter, thisLetter, letterMap), newBackPair);
+  }
 }
 
 typedef struct PuzzleReadRes
 {
   bool success;
   PuzzleGrid puzzle;
-  CoordinateArray *letterMap;
+  LetterPairArray *letterMap;
 } PuzzleReadRes;
 
 typedef enum LineReadRes
@@ -131,7 +256,7 @@ typedef enum LineReadRes
  *
  *  -  `Ok` - line was read correctly
  */
-LineReadRes readLine(CoordinateArray letterMap['z' - 'a' + 1], PuzzleGrid *puzzle, bool isFirstLine)
+LineReadRes readLine(LetterPairArray letterMap[], PuzzleGrid *puzzle, bool isFirstLine)
 {
   bool readAtLeastOneChar = false;
   size_t lenBefore = puzzle->arr.len;
@@ -151,11 +276,9 @@ LineReadRes readLine(CoordinateArray letterMap['z' - 'a' + 1], PuzzleGrid *puzzl
 
     if (c != '.')
     {
-      Coordinate coor = {
-          .x = isFirstLine ? puzzle->arr.len : puzzle->arr.len % puzzle->rowLen,
-          .y = isFirstLine ? 0 : puzzle->arr.len / puzzle->rowLen,
-      };
-      pushCoordinate(&letterMap[c - 'a'], coor);
+      size_t xIndex = isFirstLine ? puzzle->arr.len : puzzle->arr.len % puzzle->rowLen;
+      size_t yIndex = isFirstLine ? 0 : puzzle->arr.len / puzzle->rowLen;
+      addLetterPairs(c, xIndex, yIndex, *puzzle, letterMap);
     }
 
     Entry newLetter = {
@@ -189,7 +312,7 @@ PuzzleReadRes readPuzzle()
       .rowLen = 0,
       .arr = newEntryArr(),
   };
-  CoordinateArray *letterMap = newLetterMap();
+  LetterPairArray *letterMap = newLetterMap();
   PuzzleReadRes res = {
       .success = false,
       .puzzle = puzzle,
@@ -349,26 +472,27 @@ void printLeftovers(PuzzleGrid puzzle)
  * @param word a `ChArray` of the word you're looking for
  * @param puzzle the relevant `PuzzleGrid` in which to search. If `mark` is `true` and the word was found
  * the elements of this will be mutated (their `entry.marked` will be set to true)
- * @param coordinate the coordinate at which the first letter of the word is.
- * This letter is not checked for matching, it is expected to match
- * @param xDirection `1`, `0` or `-1`. X coordinate of a direction vector
- * that represents the direction along which to check. For other values the behaviour is undefined
- * @param yDirection `1`, `0` or `-1`. Y coordinate of a direction vector
- * that represents the direction along which to check. For other values the behaviour is undefined
+ * @param letterPair matching letter pair of start of the word. It is expeced these two letters match
  *
  * @returns `true` if the word was found, `false` otherwise
  */
-bool checkAlongDirection(bool mark, ChArray word, PuzzleGrid puzzle, Coordinate coordinate, int xDirection, int yDirection)
+bool checkAlongDirection(bool mark, ChArray word, PuzzleGrid puzzle, LetterPair letterPair)
 {
+
+  size_t xIndex = letterPair.xIndex;
+  size_t yIndex = letterPair.yIndex;
+  int xDirection = letterPair.xDir;
+  int yDirection = letterPair.yDir;
+
   //  if the word wouldnt fit along the direction no need to check
-  Entry *lastLetter = getAt(puzzle, coordinate.x + xDirection * (word.len - 1), coordinate.y + yDirection * (word.len - 1));
+  Entry *lastLetter = getAt(puzzle, xIndex + xDirection * (word.len - 1), yIndex + yDirection * (word.len - 1), false);
   if (lastLetter == NULL || lastLetter->letter != word.data[word.len - 1])
     return false;
 
-  for (size_t j = 1; j < word.len - 1; j++)
+  for (size_t j = 2; j < word.len - 1; j++)
   {
     char wordLetter = word.data[j];
-    Entry *e = getAt(puzzle, coordinate.x + xDirection * j, coordinate.y + yDirection * j);
+    Entry *e = getAt(puzzle, xIndex + xDirection * j, yIndex + yDirection * j, false);
     if (e == NULL || e->letter != wordLetter)
     {
       return false;
@@ -379,7 +503,7 @@ bool checkAlongDirection(bool mark, ChArray word, PuzzleGrid puzzle, Coordinate 
   {
     for (size_t j = 0; j < word.len; j++)
     {
-      getAt(puzzle, coordinate.x + xDirection * j, coordinate.y + yDirection * j)->marked = true;
+      getAt(puzzle, xIndex + xDirection * j, yIndex + yDirection * j, false)->marked = true;
     }
   }
   return true;
@@ -397,24 +521,18 @@ bool checkAlongDirection(bool mark, ChArray word, PuzzleGrid puzzle, Coordinate 
  *
  * @returns number of found occurances
  */
-unsigned findWords(ChArray word, bool markFound, PuzzleGrid puzzle, CoordinateArray letterMap[])
+unsigned findWords(ChArray word, bool markFound, PuzzleGrid puzzle, LetterPairArray letterMap[])
 {
   char firstLetter = word.data[0];
-  CoordinateArray possibleStarts = letterMap[firstLetter - 'a'];
+  char secondLetter = word.data[1];
+  LetterPairArray *possibleStarts = getLetterPairs(firstLetter, secondLetter, letterMap);
 
   unsigned res = 0;
 
-  for (size_t i = 0; i < possibleStarts.len; i++)
+  for (size_t i = 0; i < possibleStarts->len; i++)
   {
-    Coordinate coordinate = possibleStarts.data[i];
-    res += checkAlongDirection(markFound, word, puzzle, coordinate, 1, 0);
-    res += checkAlongDirection(markFound, word, puzzle, coordinate, 1, 1);
-    res += checkAlongDirection(markFound, word, puzzle, coordinate, 0, 1);
-    res += checkAlongDirection(markFound, word, puzzle, coordinate, -1, 1);
-    res += checkAlongDirection(markFound, word, puzzle, coordinate, -1, 0);
-    res += checkAlongDirection(markFound, word, puzzle, coordinate, -1, -1);
-    res += checkAlongDirection(markFound, word, puzzle, coordinate, 0, -1);
-    res += checkAlongDirection(markFound, word, puzzle, coordinate, 1, -1);
+    LetterPair start = possibleStarts->data[i];
+    res += checkAlongDirection(markFound, word, puzzle, start);
   }
 
   return res;
@@ -426,11 +544,7 @@ unsigned findWords(ChArray word, bool markFound, PuzzleGrid puzzle, CoordinateAr
 int error(PuzzleReadRes readPuzzle)
 {
   printf("Nespravny vstup.\n");
-  for (int i = 0; i < 26; i++)
-  {
-    free(readPuzzle.letterMap[i].data);
-  }
-  free(readPuzzle.letterMap);
+  freeLetterMap(readPuzzle.letterMap);
   free(readPuzzle.puzzle.arr.data);
   return 1;
 }
@@ -466,11 +580,7 @@ int main()
       printLeftovers(puzzleRead.puzzle);
       break;
     case Eof:
-      for (int i = 0; i < 26; i++)
-      {
-        free(puzzleRead.letterMap[i].data);
-      }
-      free(puzzleRead.letterMap);
+      freeLetterMap(puzzleRead.letterMap);
       free(puzzleRead.puzzle.arr.data);
       free(word.data);
       return 0;
