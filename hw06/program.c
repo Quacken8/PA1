@@ -49,6 +49,15 @@
     arr->data[arr->len++] = newEl;                                                        \
   }
 
+size_t min(size_t a, size_t b)
+{
+  return a < b ? a : b;
+}
+size_t max(size_t a, size_t b)
+{
+  return a > b ? a : b;
+}
+
 typedef struct Entry
 {
   char letter;
@@ -57,54 +66,96 @@ typedef struct Entry
 
 DEFINE_ARR_HELPERS(Entry, EntryArr);
 
+DEFINE_ARR_HELPERS(char, ChArray);
+
+void printCharray(ChArray arr)
+{
+  for (size_t i = 0; i < arr.len; i++)
+  {
+    printf("%c", arr.data[i]);
+  }
+}
+
+/**
+ * Insterts `c` at `arr[index]`, appending it at the end if `index > arr.len`
+ */
+void changeOrPush(ChArray *arr, char c, size_t index)
+{
+  if (index < arr->len)
+    arr->data[index] = c;
+  else
+    pushchar(arr, c);
+}
+
+DEFINE_ARR_HELPERS(bool, BoolArray);
+
 typedef struct PuzzleGrid
 {
   size_t rowLen;
-  EntryArr arr;
+  ChArray westEast;
+  ChArray northSouth;
+  ChArray russiaBrazil;
+  ChArray canadaAustralia;
+  BoolArray markedWestEast;
 } PuzzleGrid;
 
-/**
- * @param buildMode if true it is assumed that you may be accessing elements of a yet unfinished line of the puzzle
- * @returns a pointer at an entry in the puzzle or NULL if the coordinates are out of bounds
- */
-Entry *getAt(PuzzleGrid puzzle, size_t x, size_t y, bool buildMode)
+void freePuzzle(PuzzleGrid puzzle)
 {
+  free(puzzle.canadaAustralia.data);
+  free(puzzle.russiaBrazil.data);
+  free(puzzle.markedWestEast.data);
+  free(puzzle.northSouth.data);
+  free(puzzle.westEast.data);
+}
+
+typedef struct OptionChar
+{
+  char c;
+  bool isSome;
+} OptionChar;
+
+OptionChar getLetterAt(PuzzleGrid puzzle, size_t x, size_t y, bool buildMode)
+{
+  OptionChar res;
 
   bool outOfBounds;
   if (buildMode)
   {
     if (puzzle.rowLen == 0)
-      outOfBounds = x > puzzle.arr.len || y != 0;
+      outOfBounds = x > puzzle.westEast.len || y != 0;
     else
     {
-      outOfBounds = x >= puzzle.rowLen || y >= (puzzle.arr.len + puzzle.rowLen - 1) / puzzle.rowLen;
+      outOfBounds = x >= puzzle.rowLen || y >= (puzzle.westEast.len + puzzle.rowLen - 1) / puzzle.rowLen;
     }
   }
   else
-    outOfBounds = x >= puzzle.rowLen || (y >= puzzle.arr.len / puzzle.rowLen);
+    outOfBounds = x >= puzzle.rowLen || (y >= puzzle.westEast.len / puzzle.rowLen);
 
   if (outOfBounds)
   {
-    return NULL;
+    res.isSome = false;
+    return res;
   }
+  res.isSome = true;
   size_t index = y * puzzle.rowLen + x;
-  return &puzzle.arr.data[index];
+  res.c = puzzle.westEast.data[index];
+  return res;
 }
 
-// Thought this would help with types, but you can't assign -1 to DirComponent ;-;
 typedef enum
 {
-  ONE = 1,
-  ZERO = 0,
-  M_ONE = -1,
-} DirComponent;
+  WEST_EAST,
+  NORTH_SOUTH,
+  RUSSIA_BRAZIL,
+  CANADA_AUSTRALIA,
+} Direction;
 
 typedef struct LetterPair
 {
   size_t xIndex;
   size_t yIndex;
-  DirComponent xDir;
-  DirComponent yDir;
+  Direction dir;
+  bool backwards;
 } LetterPair;
 
 DEFINE_ARR_HELPERS(LetterPair, LetterPairArray);
@@ -154,84 +205,79 @@ LetterPairArray *getLetterPairs(char first, char second, LetterPairArray *letter
  */
 void addLetterPairs(char thisLetter, size_t xIndex, size_t yIndex, PuzzleGrid puzzle, LetterPairArray *letterMap)
 {
-
   // WEST
-  Entry *otherLetter = getAt(puzzle, xIndex - 1, yIndex, true);
-  if (otherLetter != NULL && otherLetter->letter != '.')
+  OptionChar otherLetter = getLetterAt(puzzle, xIndex - 1, yIndex, true);
+  if (otherLetter.isSome && otherLetter.c != '.')
   {
     LetterPair newFrontPair = {
         .xIndex = xIndex,
         .yIndex = yIndex,
-        .xDir = M_ONE,
-        .yDir = ZERO,
+        .dir = WEST_EAST,
+        .backwards = true,
     };
-    pushLetterPair(getLetterPairs(thisLetter, otherLetter->letter, letterMap), newFrontPair);
+    pushLetterPair(getLetterPairs(thisLetter, otherLetter.c, letterMap), newFrontPair);
     LetterPair newBackPair = {
         .xIndex = xIndex - 1,
         .yIndex = yIndex,
-        .xDir = ONE,
-        .yDir = ZERO,
+        .dir = WEST_EAST,
+        .backwards = false,
     };
-    pushLetterPair(getLetterPairs(otherLetter->letter, thisLetter, letterMap), newBackPair);
+    pushLetterPair(getLetterPairs(otherLetter.c, thisLetter, letterMap), newBackPair);
   }
-  // NORTH WEST
-  otherLetter = getAt(puzzle, xIndex - 1, yIndex - 1, true);
-  if (otherLetter != NULL && otherLetter->letter != '.')
+  otherLetter = getLetterAt(puzzle, xIndex - 1, yIndex - 1, true);
+  if (otherLetter.isSome && otherLetter.c != '.')
   {
     LetterPair newFrontPair = {
         .xIndex = xIndex,
         .yIndex = yIndex,
-        .xDir = M_ONE,
-        .yDir = M_ONE,
+        .dir = CANADA_AUSTRALIA,
+        .backwards = true,
     };
-    pushLetterPair(getLetterPairs(thisLetter, otherLetter->letter, letterMap), newFrontPair);
+    pushLetterPair(getLetterPairs(thisLetter, otherLetter.c, letterMap), newFrontPair);
     LetterPair newBackPair = {
         .xIndex = xIndex - 1,
         .yIndex = yIndex - 1,
-        .xDir = ONE,
-        .yDir = ONE,
+        .dir = CANADA_AUSTRALIA,
+        .backwards = false,
     };
-    pushLetterPair(getLetterPairs(otherLetter->letter, thisLetter, letterMap), newBackPair);
+    pushLetterPair(getLetterPairs(otherLetter.c, thisLetter, letterMap), newBackPair);
   }
-
-  // NORTH
-  otherLetter = getAt(puzzle, xIndex, yIndex - 1, true);
-  if (otherLetter != NULL && otherLetter->letter != '.')
+  otherLetter = getLetterAt(puzzle, xIndex, yIndex - 1, true);
+  if (otherLetter.isSome && otherLetter.c != '.')
   {
     LetterPair newFrontPair = {
         .xIndex = xIndex,
         .yIndex = yIndex,
-        .xDir = ZERO,
-        .yDir = M_ONE,
+        .dir = NORTH_SOUTH,
+        .backwards = true,
     };
-    pushLetterPair(getLetterPairs(thisLetter, otherLetter->letter, letterMap), newFrontPair);
+    pushLetterPair(getLetterPairs(thisLetter, otherLetter.c, letterMap), newFrontPair);
     LetterPair newBackPair = {
         .xIndex = xIndex,
         .yIndex = yIndex - 1,
-        .xDir = ZERO,
-        .yDir = ONE,
+        .dir = NORTH_SOUTH,
+        .backwards = false,
     };
-    pushLetterPair(getLetterPairs(otherLetter->letter, thisLetter, letterMap), newBackPair);
+    pushLetterPair(getLetterPairs(otherLetter.c, thisLetter, letterMap), newBackPair);
   }
 
-  // NORTH EAST
-  otherLetter = getAt(puzzle, xIndex + 1, yIndex - 1, true);
-  if (otherLetter != NULL && otherLetter->letter != '.')
+  otherLetter = getLetterAt(puzzle, xIndex + 1, yIndex - 1, true);
+  if (otherLetter.isSome && otherLetter.c != '.')
   {
     LetterPair newFrontPair = {
         .xIndex = xIndex,
         .yIndex = yIndex,
-        .xDir = ONE,
-        .yDir = M_ONE,
+        .dir = RUSSIA_BRAZIL,
+        .backwards = true,
     };
-    pushLetterPair(getLetterPairs(thisLetter, otherLetter->letter, letterMap), newFrontPair);
+    pushLetterPair(getLetterPairs(thisLetter, otherLetter.c, letterMap), newFrontPair);
     LetterPair newBackPair = {
         .xIndex = xIndex + 1,
         .yIndex = yIndex - 1,
-        .xDir = M_ONE,
-        .yDir = ONE,
+        .dir = RUSSIA_BRAZIL,
+        .backwards = false,
     };
-    pushLetterPair(getLetterPairs(otherLetter->letter, thisLetter, letterMap), newBackPair);
+    pushLetterPair(getLetterPairs(otherLetter.c, thisLetter, letterMap), newBackPair);
   }
 }
 
@@ -268,7 +314,7 @@ typedef enum LineReadRes
 LineReadRes readLine(LetterPairArray letterMap[], PuzzleGrid *puzzle, bool isFirstLine)
 {
   bool readAtLeastOneChar = false;
-  size_t lenBefore = puzzle->arr.len;
+  size_t lenBefore = puzzle->westEast.len;
   while (true)
   {
     char c = getchar();
@@ -285,16 +331,13 @@ LineReadRes readLine(LetterPairArray letterMap[], PuzzleGrid *puzzle, bool isFir
 
     if (c != '.')
     {
-      size_t xIndex = isFirstLine ? puzzle->arr.len : puzzle->arr.len % puzzle->rowLen;
-      size_t yIndex = isFirstLine ? 0 : puzzle->arr.len / puzzle->rowLen;
+      size_t xIndex = isFirstLine ? puzzle->westEast.len : puzzle->westEast.len % puzzle->rowLen;
+      size_t yIndex = isFirstLine ? 0 : puzzle->westEast.len / puzzle->rowLen;
       addLetterPairs(c, xIndex, yIndex, *puzzle, letterMap);
     }
 
-    Entry newLetter = {
-        .letter = c,
-        .marked = false,
-    };
-    pushEntry(&puzzle->arr, newLetter);
+    pushchar(&puzzle->westEast, c);
+    pushbool(&puzzle->markedWestEast, false);
   }
 
   if (!readAtLeastOneChar)
@@ -309,18 +352,153 @@ LineReadRes readLine(LetterPairArray letterMap[], PuzzleGrid *puzzle, bool isFir
     }
   }
 
-  if (!isFirstLine && puzzle->arr.len - lenBefore != puzzle->rowLen)
+  if (!isFirstLine && puzzle->westEast.len - lenBefore != puzzle->rowLen)
     return Error;
 
   return Ok;
 }
 
+typedef struct Coordinate
+{
+  size_t x;
+  size_t y;
+} Coordinate;
+
+size_t getIndexOfRotated(Direction rotation, size_t rowLen, size_t colLen, size_t x, size_t y)
+{
+  size_t diagonal;
+
+  switch (rotation)
+  {
+  case WEST_EAST:
+    return x + rowLen * y;
+  case NORTH_SOUTH:
+    return y + colLen * x;
+  case RUSSIA_BRAZIL:
+    diagonal = x + y;
+    break;
+  case CANADA_AUSTRALIA:
+    diagonal = (rowLen - x - 1) + y;
+    break;
+  default:
+    diagonal = 0;
+  }
+  size_t bigDimension = max(rowLen, colLen);
+  size_t smallDimension = min(rowLen, colLen);
+
+  // ⎛ \ \ \ \ ⎞
+  // ⎜ . \ \ \ ⎟
+  // ⎜ . . \ \ ⎟
+  // ⎜ . . . \ ⎟
+  // ⎜ . . . . ⎟
+  // ⎜ . . . . ⎟
+  // ⎝ . . . . ⎠
+  size_t index = min(diagonal * (diagonal + 1), (smallDimension * (smallDimension + 1))) / 2;
+
+  // ⎛ . . . . ⎞
+  // ⎜ \ . . . ⎟
+  // ⎜ \ \ . . ⎟
+  // ⎜ \ \ \ . ⎟
+  // ⎜ . \ \ \ ⎟
+  // ⎜ . . \ \ ⎟
+  // ⎝ . . . \ ⎠
+
+  if (diagonal > smallDimension)
+    index += min(diagonal - smallDimension, bigDimension - smallDimension) * smallDimension;
+
+  // ⎛ . . . . ⎞
+  // ⎜ . . . . ⎟
+  // ⎜ . . . . ⎟
+  // ⎜ . . . . ⎟
+  // ⎜ \ . . . ⎟
+  // ⎜ \ \ . . ⎟
+  // ⎝ \ \ \ . ⎠
+
+  if (diagonal > bigDimension)
+    index += (smallDimension * (smallDimension - 1) - (bigDimension + smallDimension - diagonal) * (bigDimension + smallDimension - diagonal - 1)) / 2;
+
+  // ⎛ . . . . ⎞
+  // ⎜ . . . . ⎟
+  // ⎜ . . . . ⎟
+  // ⎜ \ . . . ⎟
+  // ⎜ . \ . . ⎟
+  // ⎜ . . \ . ⎟
+  // ⎝ . . . . ⎠
+  if (rotation == CANADA_AUSTRALIA)
+    index += min(x, y);
+  else
+    index += min(rowLen - x - 1, y);
+
+  return index;
+}
+
+/**
+ * To a finished west-east array in a puzzle adds the three remaining rotations
+ */
+void addRotatedGrids(PuzzleGrid *puzzle)
+{
+  ChArray northSouth = {
+      .len = puzzle->westEast.len,
+      .capacity = puzzle->westEast.len,
+      .data = (char *)malloc(puzzle->westEast.len * sizeof(char)),
+  };
+
+  size_t colLen = puzzle->westEast.len / puzzle->rowLen;
+  size_t rowLen = puzzle->rowLen;
+
+  ChArray russiaBrazil = {
+      .len = puzzle->westEast.len,
+      .capacity = puzzle->westEast.len,
+      .data = (char *)malloc(puzzle->westEast.len * sizeof(char)),
+  };
+  ChArray canadaAustralia = {
+      .len = puzzle->westEast.len,
+      .capacity = puzzle->westEast.len,
+      .data = (char *)malloc(puzzle->westEast.len * sizeof(char)),
+  };
+
+  for (size_t i = 0; i < puzzle->westEast.len; i++)
+  {
+    char c = puzzle->westEast.data[i];
+    size_t x = i % rowLen;
+    size_t y = i / rowLen;
+    northSouth.data[getIndexOfRotated(NORTH_SOUTH, rowLen, colLen, x, y)] = c;
+    russiaBrazil.data[getIndexOfRotated(RUSSIA_BRAZIL, rowLen, colLen, x, y)] = c;
+    canadaAustralia.data[getIndexOfRotated(CANADA_AUSTRALIA, rowLen, colLen, x, y)] = c;
+  }
+
+  puzzle->canadaAustralia = canadaAustralia;
+  puzzle->russiaBrazil = russiaBrazil;
+  puzzle->northSouth = northSouth;
+}
+
+ChArray getRotatedGrid(PuzzleGrid puzzle, Direction rotation)
+{
+  switch (rotation)
+  {
+  case WEST_EAST:
+    return puzzle.westEast;
+  case NORTH_SOUTH:
+    return puzzle.northSouth;
+  case RUSSIA_BRAZIL:
+    return puzzle.russiaBrazil;
+  case CANADA_AUSTRALIA:
+    return puzzle.canadaAustralia;
+  default:
+    // cant happen
+    printf("Got unexpected enum value!\n");
+    exit(1);
+  }
+}
+
 PuzzleReadRes readPuzzle()
 {
-  PuzzleGrid puzzle = {
-      .rowLen = 0,
-      .arr = newEntryArr(),
-  };
+  PuzzleGrid puzzle;
+
+  puzzle.rowLen = 0;
+  puzzle.westEast = newChArray();
+  puzzle.markedWestEast = newBoolArray();
+
   LetterPairArray *letterMap = newLetterMap();
   PuzzleReadRes res = {
       .success = false,
@@ -334,7 +512,7 @@ PuzzleReadRes readPuzzle()
     return res;
   }
 
-  res.puzzle.rowLen = res.puzzle.arr.len;
+  res.puzzle.rowLen = res.puzzle.westEast.len;
 
   while (true)
   {
@@ -349,27 +527,6 @@ PuzzleReadRes readPuzzle()
 
   res.success = true;
   return res;
-}
-
-DEFINE_ARR_HELPERS(char, ChArray);
-
-void printCharray(ChArray arr)
-{
-  for (size_t i = 0; i < arr.len; i++)
-  {
-    printf("%c", arr.data[i]);
-  }
-}
-
-/**
- * Insterts `c` at `arr[index]`, appending it at the end if `index > arr.len`
- */
-void changeOrPush(ChArray *arr, char c, size_t index)
-{
-  if (index < arr->len)
-    arr->data[index] = c;
-  else
-    pushchar(arr, c);
 }
 
 typedef enum QueryType
@@ -456,12 +613,13 @@ void printLeftovers(PuzzleGrid puzzle)
 
   unsigned printedLetters = 0;
 
-  for (size_t i = 0; i < puzzle.arr.len; i++)
+  for (size_t i = 0; i < puzzle.westEast.len; i++)
   {
-    Entry e = puzzle.arr.data[i];
-    if (!e.marked && e.letter != '.')
+    bool marked = puzzle.markedWestEast.data[i];
+    char c = puzzle.westEast.data[i];
+    if (!marked && c != '.')
     {
-      printf("%c", e.letter);
+      printf("%c", c);
       printedLetters++;
       if (printedLetters == LETTERS_PER_LINE)
       {
@@ -490,19 +648,32 @@ bool checkAlongDirection(bool mark, ChArray word, PuzzleGrid puzzle, LetterPair 
 
   size_t xIndex = letterPair.xIndex;
   size_t yIndex = letterPair.yIndex;
-  int xDirection = letterPair.xDir;
-  int yDirection = letterPair.yDir;
+  Direction direction = letterPair.dir;
+  ChArray arr = getRotatedGrid(puzzle, direction);
+  size_t startingIndex = getIndexOfRotated(direction, puzzle.rowLen, puzzle.westEast.len / puzzle.rowLen, xIndex, yIndex);
+  bool backwards = letterPair.backwards;
+
+  int xDirection = (direction == WEST_EAST || direction == CANADA_AUSTRALIA) ? 1 : direction == RUSSIA_BRAZIL ? -1
+                                                                                                              : 0;
+
+  int yDirection = direction != WEST_EAST ? 1 : 0;
+
+  if (backwards)
+  {
+    xDirection *= -1;
+    yDirection *= -1;
+  }
 
   //  if the word wouldnt fit along the direction no need to check
-  Entry *lastLetter = getAt(puzzle, xIndex + xDirection * (word.len - 1), yIndex + yDirection * (word.len - 1), false);
-  if (lastLetter == NULL || lastLetter->letter != word.data[word.len - 1])
+  OptionChar lastLetter = getLetterAt(puzzle, xIndex + xDirection * (word.len - 1), yIndex + yDirection * (word.len - 1), false);
+  if (!lastLetter.isSome || lastLetter.c != word.data[word.len - 1])
     return false;
 
   for (size_t j = 2; j < word.len - 1; j++)
   {
     char wordLetter = word.data[j];
-    Entry *e = getAt(puzzle, xIndex + xDirection * j, yIndex + yDirection * j, false);
-    if (e == NULL || e->letter != wordLetter)
+    char puzzleLetter = arr.data[startingIndex + (backwards ? -j : j)];
+    if (puzzleLetter != wordLetter)
     {
       return false;
     }
@@ -510,9 +681,10 @@ bool checkAlongDirection(bool mark, ChArray word, PuzzleGrid puzzle, LetterPair 
 
   if (mark)
   {
+
     for (size_t j = 0; j < word.len; j++)
     {
-      getAt(puzzle, xIndex + xDirection * j, yIndex + yDirection * j, false)->marked = true;
+      puzzle.markedWestEast.data[xIndex + xDirection * j + (yIndex + yDirection * j) * puzzle.rowLen] = true;
     }
   }
   return true;
@@ -554,7 +726,7 @@ int error(PuzzleReadRes readPuzzle)
 {
   printf("Nespravny vstup.\n");
   freeLetterMap(readPuzzle.letterMap);
-  free(readPuzzle.puzzle.arr.data);
+  freePuzzle(readPuzzle.puzzle);
   return 1;
 }
 
@@ -567,6 +739,8 @@ int main()
   {
     return error(puzzleRead);
   }
+
+  addRotatedGrids(&puzzleRead.puzzle);
 
   ChArray word = newChArray();
   while (true)
@@ -590,7 +764,7 @@ int main()
       break;
     case Eof:
       freeLetterMap(puzzleRead.letterMap);
-      free(puzzleRead.puzzle.arr.data);
+      freePuzzle(puzzleRead.puzzle);
       free(word.data);
       return 0;
     case ReadError:
