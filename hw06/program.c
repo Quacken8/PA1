@@ -437,6 +437,8 @@ size_t getIndexOfRotated(Direction rotation, size_t rowLen, size_t colLen, size_
  */
 void addRotatedGrids(PuzzleGrid *puzzle)
 {
+  if (puzzle->westEast.len == 0 || puzzle->rowLen == 0)
+    return;
   ChArray northSouth = {
       .len = puzzle->westEast.len,
       .capacity = puzzle->westEast.len,
@@ -494,7 +496,6 @@ ChArray getRotatedGrid(PuzzleGrid puzzle, Direction rotation)
 PuzzleReadRes readPuzzle()
 {
   PuzzleGrid puzzle;
-
   puzzle.rowLen = 0;
   puzzle.westEast = newChArray();
   puzzle.markedWestEast = newBoolArray();
@@ -653,8 +654,8 @@ bool checkAlongDirection(bool mark, ChArray word, PuzzleGrid puzzle, LetterPair 
   size_t startingIndex = getIndexOfRotated(direction, puzzle.rowLen, puzzle.westEast.len / puzzle.rowLen, xIndex, yIndex);
   bool backwards = letterPair.backwards;
 
-  int xDirection = (direction == WEST_EAST || direction == CANADA_AUSTRALIA) ? 1 : direction == RUSSIA_BRAZIL ? -1
-                                                                                                              : 0;
+  int xDirection = direction == RUSSIA_BRAZIL ? -1 : direction == NORTH_SOUTH ? 0
+                                                                              : 1;
 
   int yDirection = direction != WEST_EAST ? 1 : 0;
 
@@ -735,12 +736,11 @@ int main()
 
   printf("Osmismerka:\n");
   PuzzleReadRes puzzleRead = readPuzzle();
+  addRotatedGrids(&puzzleRead.puzzle);
   if (!puzzleRead.success)
   {
     return error(puzzleRead);
   }
-
-  addRotatedGrids(&puzzleRead.puzzle);
 
   ChArray word = newChArray();
   while (true)
