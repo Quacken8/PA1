@@ -38,7 +38,7 @@ typedef struct BigNum
   char *underlyingData;
   size_t biggestDigit;
   size_t smallestDigit;
-  size_t significatDigits;
+  size_t leadingZeroes;
 } BigNum;
 
 size_t totalDigits(BigNum num)
@@ -56,61 +56,60 @@ size_t min(size_t a, size_t b)
   return a < b ? a : b;
 }
 
+size_t max(size_t a, size_t b)
+{
+  return a > b ? a : b;
+}
+
 char nthLargestDigit(BigNum num, size_t n)
 {
   return num.underlyingData[digitToUnderlyingIndex(n, num)];
 }
 
-char nthLargestNonzeroDigit(BigNum num, size_t n)
-{
-  size_t offset = totalDigits(num) - num.significatDigits;
-  return nthLargestDigit(num, n + offset);
-}
-
 void splitAfterDigit(BigNum num, size_t digit, BigNum *left, BigNum *right)
 {
-  size_t leadingZeroes = totalDigits(num) - num.significatDigits;
 
   left->underlyingData = num.underlyingData;
   left->biggestDigit = num.biggestDigit;
   left->smallestDigit = num.biggestDigit + digit;
-  left->significatDigits = digit >= leadingZeroes ? digit - leadingZeroes + 1 : 0;
+  left->leadingZeroes = min(num.leadingZeroes, digit + 1);
 
   right->underlyingData = num.underlyingData;
   right->biggestDigit = num.biggestDigit + digit + 1;
   right->smallestDigit = num.smallestDigit;
-
-  size_t rightZeroes = digit > leadingZeroes ? 0 : leadingZeroes - digit;
+  right->leadingZeroes = num.leadingZeroes - left->leadingZeroes;
 
   // check the leading zeroes of right tho
-  if (rightZeroes == 0)
+  if (right->leadingZeroes == 0)
   {
     for (size_t i = 0; i < totalDigits(*right); i++)
     {
-      if (nthLargestDigit(*right, i) != 0)
+      if (nthLargestDigit(*right, i) != '0')
         break;
-      rightZeroes++;
+      right->leadingZeroes++;
     }
   }
-  right->significatDigits = right->smallestDigit - right->biggestDigit + 1 - rightZeroes;
 }
 
 /**
- * returns a < b
+ * returns a ≤ b
  */
-bool isStrictlySmaller(BigNum a, BigNum b)
+bool isLEq(BigNum a, BigNum b)
 {
-  if (a.significatDigits != b.significatDigits)
-    return a.significatDigits < b.significatDigits;
+  size_t aSignificantDigits = totalDigits(a) - a.leadingZeroes;
+  size_t bSignificantDigits = totalDigits(b) - b.leadingZeroes;
 
-  for (size_t i = 0; i < a.significatDigits; i++)
+  if (aSignificantDigits != bSignificantDigits)
+    return aSignificantDigits < bSignificantDigits;
+
+  for (size_t i = a.leadingZeroes, j = b.leadingZeroes; i < totalDigits(a); i++, j++)
   {
-    char aDigit = nthLargestNonzeroDigit(a, i);
-    char bDigit = nthLargestNonzeroDigit(b, i);
+    char aDigit = nthLargestDigit(a, i);
+    char bDigit = nthLargestDigit(b, j);
     if (aDigit != bDigit)
       return aDigit < bDigit;
   }
-  return false;
+  return true;
 }
 
 bool isOdd(char c)
@@ -124,7 +123,7 @@ bool isValidSplit(BigNum left, BigNum right)
   if (isOdd(nthLargestDigit(left, totalDigits(left) - 1)))
     return true;
 
-  return !isStrictlySmaller(right, left);
+  return isLEq(left, right);
 }
 
 typedef enum ReadRes
@@ -238,12 +237,12 @@ void lookForCombinations(ChArray original, bool printCombinations)
 
   initialSequence.biggestDigit = 0;
   initialSequence.smallestDigit = (original.len - 1) / 2;
-  initialSequence.significatDigits = totalDigits(initialSequence) - leadingZeroes;
+  initialSequence.leadingZeroes = leadingZeroes;
   initialSequence.underlyingData = original.data;
 
   char dummy[] = "0";
   BigNum prev;
-  prev.significatDigits = 0;
+  prev.leadingZeroes = 1;
   prev.biggestDigit = 0;
   prev.smallestDigit = 0;
   prev.underlyingData = dummy;
