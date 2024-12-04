@@ -33,17 +33,98 @@ ChArray newCharray()
   return res;
 }
 
-typedef struct Slice
+typedef struct BigNum
 {
-  size_t leadingZeroes;
-  size_t firstIndex;
-  size_t lastIndex;
-} Slice;
+  char *underlyingData;
+  size_t biggestDigit;
+  size_t smallestDigit;
+  size_t significatDigits;
+} BigNum;
+
+size_t totalDigits(BigNum num)
+{
+  return num.smallestDigit - num.biggestDigit + 1;
+}
+
+size_t digitToUnderlyingIndex(size_t digit, BigNum num)
+{
+  return 2 * (num.biggestDigit + digit);
+}
+
+size_t min(size_t a, size_t b)
+{
+  return a < b ? a : b;
+}
+
+char nthLargestDigit(BigNum num, size_t n)
+{
+  return num.underlyingData[digitToUnderlyingIndex(n, num)];
+}
+
+char nthLargestNonzeroDigit(BigNum num, size_t n)
+{
+  size_t offset = totalDigits(num) - num.significatDigits;
+  return nthLargestDigit(num, n + offset);
+}
+
+void splitAfterDigit(BigNum num, size_t digit, BigNum *left, BigNum *right)
+{
+  size_t leadingZeroes = totalDigits(num) - num.significatDigits;
+
+  left->underlyingData = num.underlyingData;
+  left->biggestDigit = num.biggestDigit;
+  left->smallestDigit = num.biggestDigit + digit;
+  left->significatDigits = digit >= leadingZeroes ? digit - leadingZeroes + 1 : 0;
+
+  right->underlyingData = num.underlyingData;
+  right->biggestDigit = num.biggestDigit + digit + 1;
+  right->smallestDigit = num.smallestDigit;
+
+  size_t rightZeroes = digit > leadingZeroes ? 0 : leadingZeroes - digit;
+
+  // check the leading zeroes of right tho
+  if (rightZeroes == 0)
+  {
+    for (size_t i = 0; i < totalDigits(*right); i++)
+    {
+      if (nthLargestDigit(*right, i) != 0)
+        break;
+      rightZeroes++;
+    }
+  }
+  right->significatDigits = right->smallestDigit - right->biggestDigit + 1 - rightZeroes;
+}
+
+/**
+ * returns a < b
+ */
+bool isStrictlySmaller(BigNum a, BigNum b)
+{
+  if (a.significatDigits != b.significatDigits)
+    return a.significatDigits < b.significatDigits;
+
+  for (size_t i = 0; i < a.significatDigits; i++)
+  {
+    char aDigit = nthLargestNonzeroDigit(a, i);
+    char bDigit = nthLargestNonzeroDigit(b, i);
+    if (aDigit != bDigit)
+      return aDigit < bDigit;
+  }
+  return false;
+}
 
 bool isOdd(char c)
 {
   unsigned asNumber = c - '0';
   return asNumber % 2;
+}
+
+bool isValidSplit(BigNum left, BigNum right)
+{
+  if (isOdd(nthLargestDigit(left, totalDigits(left) - 1)))
+    return true;
+
+  return !isStrictlySmaller(right, left);
 }
 
 typedef enum ReadRes
@@ -80,7 +161,7 @@ ReadRes readInput(ChArray *buffer)
       return Error;
 
     pushChar(buffer, digit);
-    pushChar(buffer, 0);
+    pushChar(buffer, '|');
   }
 
   if (buffer->len == 0)
@@ -96,7 +177,8 @@ void printSequence(ChArray sequence)
   printf("* ");
   for (size_t i = 0; i < sequence.len - 1; i++) // skipping trailing comma in print is easier than handling it in logic
   {
-    printf("%c", sequence.data[i]);
+    if (sequence.data[i] != '|')
+      printf("%c", sequence.data[i]);
   }
   printf("\n");
 }
@@ -111,23 +193,38 @@ size_t safeSubtract(size_t a, size_t b)
   return a - b;
 }
 
-bool leftHalfStrictlyBigger(Slice slice, ChArray original)
+unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool printCombinations, ChArray original)
 {
-  size_t middleIndex = (slice.lastIndex - slice.firstIndex) / 2;
-  for (size_t i = slice.firstIndex, j = middleIndex + 1; i < middleIndex; i += 2, j += 2)
+  unsigned long long res = 0;
+  for (size_t i = 0; i < totalDigits(slice) - 1; i++)
   {
-    char a = original.data[i], b = original.data[j];
-    if (a < b)
-      return false;
-    if (a > b)
-      return true;
+    BigNum left;
+    BigNum right;
+    splitAfterDigit(slice, i, &left, &right);
+    if (!isValidSplit(prevLeft, left) || !isValidSplit(left, right))
+      continue;
+
+    res++;
+
+    if (printCombinations)
+    {
+      original.data[digitToUnderlyingIndex(i, slice) + 1] = ',';
+      printSequence(original);
+    }
+    if (totalDigits(right) > 1)
+      res += countSubcombinations(right, left, printCombinations, original);
+
+    if (printCombinations)
+    {
+      original.data[digitToUnderlyingIndex(i, slice) + 1] = '|';
+    }
   }
-  return false;
+
+  return res;
 }
 
 void lookForCombinations(ChArray original, bool printCombinations)
 {
-  unsigned long long totalCombinations = 0;
 
   unsigned long long leadingZeroes = 0;
   for (size_t i = 0; i < original.len; i += 2)
@@ -137,33 +234,25 @@ void lookForCombinations(ChArray original, bool printCombinations)
     leadingZeroes++;
   }
 
-  Slice sequence = {
-      .leadingZeroes = leadingZeroes,
-      .firstIndex = 0,
-      .lastIndex = original.len - 1,
-  };
+  BigNum initialSequence;
 
-  for (size_t i = sequence.firstIndex; i < sequence.lastIndex; i += 2)
-  {
-    char digit = original.data[i];
-    size_t leftLen = safeSubtract(i + 2 - sequence.firstIndex, 2 * sequence.leadingZeroes);
-    size_t rightLen = sequence.lastIndex - i - 1; // FIXME explain: Upper bound is enough
-    bool valid = isOdd(digit) || (leftLen < rightLen) || (rightLen == 0) ? true : (leftLen > rightLen ? false : !leftHalfStrictlyBigger(sequence, original));
+  initialSequence.biggestDigit = 0;
+  initialSequence.smallestDigit = (original.len - 1) / 2;
+  initialSequence.significatDigits = totalDigits(initialSequence) - leadingZeroes;
+  initialSequence.underlyingData = original.data;
 
-    if (valid)
-    {
-      totalCombinations++;
+  char dummy[] = "0";
+  BigNum prev;
+  prev.significatDigits = 0;
+  prev.biggestDigit = 0;
+  prev.smallestDigit = 0;
+  prev.underlyingData = dummy;
 
-      if (printCombinations)
-      {
-        original.data[i + 1] = ',';
-        printSequence(original);
-        original.data[i + 1] = 0;
-      }
-    }
-  }
+  if (printCombinations)
+    printSequence(original);
+  unsigned long long totalCombinations = countSubcombinations(initialSequence, prev, printCombinations, original) + 1;
 
-  printf("%lld\n", totalCombinations);
+  printf("Celkem: %lld\n", totalCombinations);
   return;
 };
 
@@ -177,7 +266,7 @@ int main()
 
     if (res == Error)
     {
-      printf("Nespravny vstup\n");
+      printf("Nespravny vstup.\n");
       break;
     }
     if (res == Eof)
