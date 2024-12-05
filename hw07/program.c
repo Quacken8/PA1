@@ -112,15 +112,20 @@ bool isLEq(BigNum a, BigNum b)
   return true;
 }
 
-bool isOdd(char c)
+bool isOddChar(char c)
 {
   unsigned asNumber = c - '0';
   return asNumber % 2;
 }
 
+bool isOdd(BigNum num)
+{
+  return isOddChar(nthLargestDigit(num, totalDigits(num) - 1));
+}
+
 bool isValidSplit(BigNum left, BigNum right)
 {
-  if (isOdd(nthLargestDigit(left, totalDigits(left) - 1)))
+  if (isOdd(left))
     return true;
 
   return isLEq(left, right);
@@ -195,7 +200,15 @@ size_t safeSubtract(size_t a, size_t b)
 unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool printCombinations, ChArray original)
 {
   unsigned long long res = 0;
-  for (size_t i = 0; i < totalDigits(slice) - 1; i++)
+  size_t startingDigit = 0;
+  if (!isOdd(prevLeft))
+  {
+    size_t prevSignificantDigits = totalDigits(prevLeft) - prevLeft.leadingZeroes;
+    if (prevSignificantDigits > 0)
+      startingDigit = slice.leadingZeroes + prevSignificantDigits - 1;
+  }
+
+  for (size_t i = startingDigit; i < totalDigits(slice) - 1; i++)
   {
     BigNum left;
     BigNum right;
