@@ -4,7 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#define INITIAL_CAPACITY 64
+#define INITIAL_CAPACITY 2
 
 typedef struct ChArray
 {
@@ -218,7 +218,7 @@ void pushComma(CommaArray *arr, size_t commaPosition)
   if (arr->capacity == arr->len)
   {
     arr->capacity *= 2;
-    arr->data = (size_t *)realloc(arr->data, arr->capacity);
+    arr->data = (size_t *)realloc(arr->data, arr->capacity * sizeof(size_t));
   }
   arr->data[arr->len++] = commaPosition;
 }
@@ -244,34 +244,48 @@ void pushCommaArray(CommaArray2D *arr, CommaArray newCombination)
   if (arr->capacity == arr->len)
   {
     arr->capacity *= 2;
-    arr->data = (CommaArray *)realloc(arr->data, arr->capacity);
+    arr->data = (CommaArray *)realloc(arr->data, arr->capacity * sizeof(CommaArray));
   }
   arr->data[arr->len++] = newCombination;
 }
 
-void printAllFromArray(CommaArray2D arr, ChArray original)
+typedef struct Sub
 {
-  for (size_t i = 0; i < arr.len; i++)
-  {
-    CommaArray combination = arr.data[i];
+  BigNum slice;
+  BigNum prevLeft;
+} Sub;
 
-    for (size_t j = 0; j < combination.len; j++)
-    {
-      original.data[j] = ',';
-    }
-    printSequence(original);
-    for (size_t j = 0; j < combination.len; j++)
-    {
-      original.data[j] = '|';
-    }
+typedef struct SubArray
+{
+  size_t capacity;
+  size_t len;
+  Sub *data;
+} SubArray;
+SubArray newSubArray()
+{
+  SubArray res = {
+      .capacity = INITIAL_CAPACITY,
+      .len = 0,
+      .data = (Sub *)malloc(INITIAL_CAPACITY * sizeof(Sub)),
+  };
+  return res;
+}
+void pushSub(SubArray *arr, Sub sub)
+{
+  if (arr->len == arr->capacity)
+  {
+    arr->capacity *= 2;
+    arr->data = (Sub *)realloc(arr->data, arr->capacity * sizeof(Sub));
   }
+  arr->data[arr->len++] = sub;
 }
 
 typedef struct MemoEntry
 {
   BigNum slice;
   BigNum prevLeft;
-  CommaArray2D results;
+  CommaArray results;
+  SubArray validSubs;
 } MemoEntry;
 
 typedef struct Memos
@@ -295,7 +309,7 @@ void pushMemo(Memos *arr, MemoEntry newMemo)
   if (arr->capacity == arr->len)
   {
     arr->capacity *= 2;
-    arr->data = (MemoEntry *)realloc(arr->data, arr->capacity);
+    arr->data = (MemoEntry *)realloc(arr->data, arr->capacity * sizeof(MemoEntry));
   }
   arr->data[arr->len++] = newMemo;
 }
@@ -311,7 +325,7 @@ bool getMemo(Memos arr, MemoEntry *res, BigNum slice, BigNum prevLeft)
   {
     MemoEntry e = arr.data[i];
 
-    if (areSame(e.prevLeft, prevLeft) && areSame(e.slice, slice))
+    if (((isOdd(e.prevLeft) && isOdd(prevLeft)) || areSame(e.prevLeft, prevLeft)) && areSame(e.slice, slice))
     {
       *res = e;
       return true;
@@ -325,27 +339,36 @@ void freeMemo(Memos memos)
   for (size_t i = 0; i < memos.len; i++)
   {
     MemoEntry e = memos.data[i];
-
-    for (size_t j = 0; j < e.results.len; j++)
-    {
-      free(e.results.data[j].data);
-    }
     free(e.results.data);
+    free(e.validSubs.data);
   }
 
   free(memos.data);
 }
 
-unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool printCombinations, ChArray original, Memos memos)
+unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool printCombinations, ChArray original, Memos *memos)
 {
   MemoEntry memo;
-  if (totalDigits(slice) > 2 && getMemo(memos, &memo, slice, prevLeft))
+  if (getMemo(*memos, &memo, slice, prevLeft))
   {
-    if (printCombinations)
+    // if (printCombinations)
+    // {
+    //   printAllFromArray(memo.results, original);
+    // }
+    unsigned long long res = memo.results.len;
+
+    for (size_t i = 0; i < memo.results.len; i++)
     {
-      printAllFromArray(memo.results, original);
+      original.data[memo.results.data[i]] = ',';
+      for (size_t i = 0; i < memo.validSubs.len; i++)
+      {
+        res += countSubcombinations(memo.validSubs.data[i].slice, memo.validSubs.data[i].slice, printCombinations, original, memos);
+      }
+      printSequence(original);
+      original.data[memo.results.data[i]] = '|';
     }
-    return memo.results.len;
+
+    return res;
   }
 
   unsigned long long res = 0;
@@ -357,6 +380,13 @@ unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool prin
       startingDigit = slice.leadingZeroes + prevSignificantDigits - 1;
   }
 
+  MemoEntry newMemo = {
+      .slice = slice,
+      .prevLeft = prevLeft,
+      .results = newCommaArray(),
+      .validSubs = newSubArray(),
+  };
+
   for (size_t i = startingDigit; i < totalDigits(slice) - 1; i++)
   {
     BigNum left;
@@ -366,7 +396,7 @@ unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool prin
       continue;
 
     res++;
-
+    pushComma(&newMemo.results, digitToUnderlyingIndex(i, slice) + 1);
     if (printCombinations)
     {
       original.data[digitToUnderlyingIndex(i, slice) + 1] = ',';
@@ -380,6 +410,8 @@ unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool prin
       original.data[digitToUnderlyingIndex(i, slice) + 1] = '|';
     }
   }
+
+  pushMemo(memos, newMemo);
 
   return res;
 }
@@ -410,7 +442,7 @@ void lookForCombinations(ChArray original, bool printCombinations)
   prev.underlyingData = dummy;
 
   Memos memos = newMemoArray();
-  unsigned long long totalCombinations = countSubcombinations(initialSequence, prev, printCombinations, original, memos) + 1;
+  unsigned long long totalCombinations = countSubcombinations(initialSequence, prev, printCombinations, original, &memos) + 1;
   if (printCombinations)
     printSequence(original);
 
