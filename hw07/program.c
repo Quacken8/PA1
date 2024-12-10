@@ -13,6 +13,9 @@ typedef struct ChArray
   char *data;
 } ChArray;
 
+/**
+ * @brief Pushes character at the end of the array, reallocating it if neccessary
+ */
 void pushChar(ChArray *arr, char e)
 {
   if (arr->capacity == arr->len)
@@ -23,6 +26,9 @@ void pushChar(ChArray *arr, char e)
   arr->data[arr->len++] = e;
 }
 
+/**
+ * @brief Creates an empty array
+ */
 ChArray newCharray()
 {
   ChArray res = {
@@ -46,26 +52,38 @@ size_t totalDigits(BigNum num)
   return num.smallestDigit - num.biggestDigit + 1;
 }
 
+/**
+ * @returns the index of the underlying ChArray at which the digit is
+ */
 size_t digitToUnderlyingIndex(size_t digit, BigNum num)
 {
   return 2 * (num.biggestDigit + digit);
 }
 
+/**
+ * @returns the smaller of the arguments
+ */
 size_t min(size_t a, size_t b)
 {
   return a < b ? a : b;
 }
 
-size_t max(size_t a, size_t b)
-{
-  return a > b ? a : b;
-}
-
+/**
+ * @returns nth largest (i.e. leftmost) digit
+ */
 char nthLargestDigit(BigNum num, size_t n)
 {
   return num.underlyingData[digitToUnderlyingIndex(n, num)];
 }
 
+/**
+ * @brief splits input into two BigNums
+ * @param num original number to be split
+ * @param digit digit (counted from the left) after which the split should happen
+ * @param left output param, will be overwritten with the left side of the original number after the split
+ * @param right output param, will be overwritten with the right side of the original number after the split
+ * @warning doesn't check whether `digit <= totalDigits(num)`
+ */
 void splitAfterDigit(BigNum num, size_t digit, BigNum *left, BigNum *right)
 {
 
@@ -92,7 +110,7 @@ void splitAfterDigit(BigNum num, size_t digit, BigNum *left, BigNum *right)
 }
 
 /**
- * returns a ≤ b
+ * @returns a <= b
  */
 bool isLEq(BigNum a, BigNum b)
 {
@@ -114,7 +132,7 @@ bool isLEq(BigNum a, BigNum b)
 
 bool isOddChar(char c)
 {
-  unsigned asNumber = c - '0';
+  int asNumber = c - '0';
   return asNumber % 2;
 }
 
@@ -123,6 +141,10 @@ bool isOdd(BigNum num)
   return isOddChar(nthLargestDigit(num, totalDigits(num) - 1));
 }
 
+/**
+ * @returns true iff such a splitting follows the vault rules
+ * @warning only makes sense for `left` and `right` numbers to be neighbouring in a larger sequence
+ */
 bool isValidSplit(BigNum left, BigNum right)
 {
   if (isOdd(left))
@@ -140,7 +162,18 @@ typedef enum ReadRes
 } ReadRes;
 
 /**
- * Overwrites the input array's data
+ * @brief Reads a query symbol (? or #) and sequence of numbers from stdin, adding space for separators in
+ * @returns `ReadRes` enum that characterizes the input:
+ *
+ * - `Error` -- wrong input
+ *
+ * - `Eof` -- end of input reached
+ *
+ * - `Num` -- query included '#'; only number of combinations is required
+ *
+ * - `Print` -- query included '?'; each found valid combination is to be printed
+ *
+ * @warning overwrites data in the input buffer
  */
 ReadRes readInput(ChArray *buffer)
 {
@@ -151,7 +184,7 @@ ReadRes readInput(ChArray *buffer)
   if (definingSybmol != '?' && definingSybmol != '#')
     return Error;
 
-  // NOLINTNEXTLINE
+  // NOLINTNEXTLINE -- skips all empty chars. The linter warning is irrelevant, because no data is saved
   scanf(" ");
 
   while (true)
@@ -165,7 +198,7 @@ ReadRes readInput(ChArray *buffer)
       return Error;
 
     pushChar(buffer, digit);
-    pushChar(buffer, '|');
+    pushChar(buffer, ' ');
   }
 
   if (buffer->len == 0)
@@ -181,28 +214,28 @@ void printSequence(ChArray sequence)
   printf("* ");
   for (size_t i = 0; i < sequence.len - 1; i++) // skipping trailing comma in print is easier than handling it in logic
   {
-    if (sequence.data[i] != '|')
+    if (sequence.data[i] != ' ')
       printf("%c", sequence.data[i]);
   }
   printf("\n");
 }
 
 /**
- * performs a-b that resolves to 0 if an underflow were to happen
+ * @brief recursively finds (and optionally prints) all valid splittings of `slice` based on it's left neighbor `prevLeft`
+ * @param slice the number to look for combinations in
+ * @param prevLeft `slice`'s neighbour to the left
+ * @param printCombinations whether to print each found combination to stdout.
+ * Prints the whole sequence, not just that related to input `slice`
+ * @param original ChArray containing the entire underlying string of numbers and separators
+ * @returns number of found valid combinations
  */
-size_t safeSubtract(size_t a, size_t b)
-{
-  if (b > a)
-    return 0;
-  return a - b;
-}
-
 unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool printCombinations, ChArray original)
 {
   unsigned long long res = 0;
   size_t startingDigit = 0;
   if (!isOdd(prevLeft))
   {
+    // skip all splittings that would end up having an even number neccessarily followed by a smaller number
     size_t prevSignificantDigits = totalDigits(prevLeft) - prevLeft.leadingZeroes;
     if (prevSignificantDigits > 0)
       startingDigit = slice.leadingZeroes + prevSignificantDigits - 1;
@@ -220,7 +253,7 @@ unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool prin
 
     if (printCombinations)
     {
-      original.data[digitToUnderlyingIndex(i, slice) + 1] = ',';
+      original.data[digitToUnderlyingIndex(i, slice) + 1] = ','; // +1 to target char *after* the digit (i.e. the separator)
       printSequence(original);
     }
     if (totalDigits(right) > 1)
@@ -228,16 +261,21 @@ unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool prin
 
     if (printCombinations)
     {
-      original.data[digitToUnderlyingIndex(i, slice) + 1] = '|';
+      original.data[digitToUnderlyingIndex(i, slice) + 1] = ' ';
     }
   }
 
   return res;
 }
 
+/**
+ * @brief initiates recursive search for combinations
+ * @param original the underlying data including digits and spaces for separators
+ * @param printCombinations whether to print out all found combinations and not just their total number
+ * @returns void, all output goes directly to stdout
+ */
 void lookForCombinations(ChArray original, bool printCombinations)
 {
-
   unsigned long long leadingZeroes = 0;
   for (size_t i = 0; i < original.len; i += 2)
   {
@@ -253,6 +291,7 @@ void lookForCombinations(ChArray original, bool printCombinations)
   initialSequence.leadingZeroes = leadingZeroes;
   initialSequence.underlyingData = original.data;
 
+  // initiate the sequence with smallest possible neighbor to the left
   char dummy[] = "0";
   BigNum prev;
   prev.leadingZeroes = 1;
