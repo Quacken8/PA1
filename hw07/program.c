@@ -4,7 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#define INITIAL_CAPACITY 2
+#define INITIAL_CAPACITY 64
 
 typedef struct ChArray
 {
@@ -197,180 +197,8 @@ size_t safeSubtract(size_t a, size_t b)
   return a - b;
 }
 
-typedef struct CommaArray
+unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool printCombinations, ChArray original)
 {
-  size_t capacity;
-  size_t len;
-  size_t *data;
-} CommaArray;
-
-CommaArray newCommaArray()
-{
-  CommaArray res = {
-      .capacity = INITIAL_CAPACITY,
-      .len = 0,
-      .data = (size_t *)malloc(INITIAL_CAPACITY * sizeof(size_t)),
-  };
-  return res;
-}
-void pushComma(CommaArray *arr, size_t commaPosition)
-{
-  if (arr->capacity == arr->len)
-  {
-    arr->capacity *= 2;
-    arr->data = (size_t *)realloc(arr->data, arr->capacity * sizeof(size_t));
-  }
-  arr->data[arr->len++] = commaPosition;
-}
-
-typedef struct CommaArray2D
-{
-  size_t capacity;
-  size_t len;
-  CommaArray *data;
-} CommaArray2D;
-
-CommaArray2D newCommaArray2D()
-{
-  CommaArray2D res = {
-      .capacity = INITIAL_CAPACITY,
-      .len = 0,
-      .data = (CommaArray *)malloc(INITIAL_CAPACITY * sizeof(CommaArray)),
-  };
-  return res;
-}
-void pushCommaArray(CommaArray2D *arr, CommaArray newCombination)
-{
-  if (arr->capacity == arr->len)
-  {
-    arr->capacity *= 2;
-    arr->data = (CommaArray *)realloc(arr->data, arr->capacity * sizeof(CommaArray));
-  }
-  arr->data[arr->len++] = newCombination;
-}
-
-typedef struct Sub
-{
-  BigNum slice;
-  BigNum prevLeft;
-} Sub;
-
-typedef struct SubArray
-{
-  size_t capacity;
-  size_t len;
-  Sub *data;
-} SubArray;
-SubArray newSubArray()
-{
-  SubArray res = {
-      .capacity = INITIAL_CAPACITY,
-      .len = 0,
-      .data = (Sub *)malloc(INITIAL_CAPACITY * sizeof(Sub)),
-  };
-  return res;
-}
-void pushSub(SubArray *arr, Sub sub)
-{
-  if (arr->len == arr->capacity)
-  {
-    arr->capacity *= 2;
-    arr->data = (Sub *)realloc(arr->data, arr->capacity * sizeof(Sub));
-  }
-  arr->data[arr->len++] = sub;
-}
-
-typedef struct MemoEntry
-{
-  BigNum slice;
-  BigNum prevLeft;
-  CommaArray results;
-  SubArray validSubs;
-} MemoEntry;
-
-typedef struct Memos
-{
-  size_t capacity;
-  size_t len;
-  MemoEntry *data;
-} Memos;
-
-Memos newMemoArray()
-{
-  Memos res = {
-      .capacity = INITIAL_CAPACITY,
-      .len = 0,
-      .data = (MemoEntry *)malloc(INITIAL_CAPACITY * sizeof(MemoEntry)),
-  };
-  return res;
-}
-void pushMemo(Memos *arr, MemoEntry newMemo)
-{
-  if (arr->capacity == arr->len)
-  {
-    arr->capacity *= 2;
-    arr->data = (MemoEntry *)realloc(arr->data, arr->capacity * sizeof(MemoEntry));
-  }
-  arr->data[arr->len++] = newMemo;
-}
-
-bool areSame(BigNum a, BigNum b)
-{
-  return a.biggestDigit == b.biggestDigit && a.smallestDigit == b.smallestDigit;
-}
-
-bool getMemo(Memos arr, MemoEntry *res, BigNum slice, BigNum prevLeft)
-{
-  for (size_t i = 0; i < arr.len; i++)
-  {
-    MemoEntry e = arr.data[i];
-
-    if (((isOdd(e.prevLeft) && isOdd(prevLeft)) || areSame(e.prevLeft, prevLeft)) && areSame(e.slice, slice))
-    {
-      *res = e;
-      return true;
-    }
-  }
-  return false;
-}
-
-void freeMemo(Memos memos)
-{
-  for (size_t i = 0; i < memos.len; i++)
-  {
-    MemoEntry e = memos.data[i];
-    free(e.results.data);
-    free(e.validSubs.data);
-  }
-
-  free(memos.data);
-}
-
-unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool printCombinations, ChArray original, Memos *memos)
-{
-  MemoEntry memo;
-  if (getMemo(*memos, &memo, slice, prevLeft))
-  {
-    // if (printCombinations)
-    // {
-    //   printAllFromArray(memo.results, original);
-    // }
-    unsigned long long res = memo.results.len;
-
-    for (size_t i = 0; i < memo.results.len; i++)
-    {
-      original.data[memo.results.data[i]] = ',';
-      for (size_t i = 0; i < memo.validSubs.len; i++)
-      {
-        res += countSubcombinations(memo.validSubs.data[i].slice, memo.validSubs.data[i].slice, printCombinations, original, memos);
-      }
-      printSequence(original);
-      original.data[memo.results.data[i]] = '|';
-    }
-
-    return res;
-  }
-
   unsigned long long res = 0;
   size_t startingDigit = 0;
   if (!isOdd(prevLeft))
@@ -379,13 +207,6 @@ unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool prin
     if (prevSignificantDigits > 0)
       startingDigit = slice.leadingZeroes + prevSignificantDigits - 1;
   }
-
-  MemoEntry newMemo = {
-      .slice = slice,
-      .prevLeft = prevLeft,
-      .results = newCommaArray(),
-      .validSubs = newSubArray(),
-  };
 
   for (size_t i = startingDigit; i < totalDigits(slice) - 1; i++)
   {
@@ -396,22 +217,20 @@ unsigned long long countSubcombinations(BigNum slice, BigNum prevLeft, bool prin
       continue;
 
     res++;
-    pushComma(&newMemo.results, digitToUnderlyingIndex(i, slice) + 1);
+
     if (printCombinations)
     {
       original.data[digitToUnderlyingIndex(i, slice) + 1] = ',';
+      printSequence(original);
     }
     if (totalDigits(right) > 1)
-      res += countSubcombinations(right, left, printCombinations, original, memos);
+      res += countSubcombinations(right, left, printCombinations, original);
 
     if (printCombinations)
     {
-      printSequence(original);
       original.data[digitToUnderlyingIndex(i, slice) + 1] = '|';
     }
   }
-
-  pushMemo(memos, newMemo);
 
   return res;
 }
@@ -441,12 +260,10 @@ void lookForCombinations(ChArray original, bool printCombinations)
   prev.smallestDigit = 0;
   prev.underlyingData = dummy;
 
-  Memos memos = newMemoArray();
-  unsigned long long totalCombinations = countSubcombinations(initialSequence, prev, printCombinations, original, &memos) + 1;
   if (printCombinations)
     printSequence(original);
+  unsigned long long totalCombinations = countSubcombinations(initialSequence, prev, printCombinations, original) + 1;
 
-  freeMemo(memos);
   printf("Celkem: %lld\n", totalCombinations);
   return;
 };
