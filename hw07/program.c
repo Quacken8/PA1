@@ -1,3 +1,9 @@
+/**
+ * NOTE: I don't really need a lot of points, so feel free to be quite
+ * critical when reviewing this (as long as it doesn't land me extra
+ * oral exam I wouldn't need otherwise :D)
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
