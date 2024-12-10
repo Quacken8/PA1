@@ -4,8 +4,10 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <stdbool.h>
 
-constexpr int PHONE_DIGITS = 10;
+#define PHONE_DIGITS 10
+#define nullptr NULL
 
 typedef struct TNode
 {
@@ -21,32 +23,172 @@ typedef struct
 
 #endif /* __PROGTEST__ */
 
+TNODE *emptyNode()
+{
+  TNODE *res = (TNODE *)malloc(sizeof(TNODE));
+  res->m_Name = nullptr;
+  for (int i = 0; i < PHONE_DIGITS; i++)
+  {
+    res->m_Child[i] = nullptr;
+  }
+
+  return res;
+}
+
 bool addPhone(TPHONEBOOK *book,
               const char *phone,
               const char *name)
 {
-  // todo
+  char digit;
+  size_t phoneLen = 0;
+  size_t buffer[PHONE_DIGITS];
+  while ((digit = phone[phoneLen]))
+  {
+    if (!isdigit(digit) || phoneLen > PHONE_DIGITS)
+    {
+      return false;
+    }
+    size_t asNumber = digit - '0';
+    buffer[phoneLen++] = asNumber;
+  }
+
+  bool anyNew = false;
+  TNODE **node = &book->m_Root;
+
+  for (size_t i = 0; i < phoneLen; i++)
+  {
+    if (*node == nullptr)
+    {
+      anyNew = true;
+      *node = emptyNode();
+    }
+    node = &(*node)->m_Child[buffer[i]];
+  }
+  if (*node == nullptr)
+  {
+    anyNew = true;
+    *node = emptyNode();
+  }
+  if (anyNew)
+    book->m_Size++;
+
+  (*node)->m_Name = (char *)realloc((*node)->m_Name, (strlen(name) + 1) * sizeof(char));
+  strcpy((*node)->m_Name, name);
+
+  return true;
+}
+
+void freeNodeRec(TNODE *node)
+{
+  if (node == nullptr)
+    return;
+
+  for (int i = 0; i < PHONE_DIGITS; i++)
+  {
+    freeNodeRec(node->m_Child[i]);
+  }
+
+  free(node->m_Name);
+  free(node);
 }
 
 void delBook(TPHONEBOOK *book)
 {
-  // todo
+  freeNodeRec(book->m_Root);
 }
+
+bool isChildless(TNODE *node)
+{
+  for (size_t i = 0; i < PHONE_DIGITS; i++)
+  {
+    if (node->m_Child[i] != nullptr)
+      return false;
+  }
+
+  return true;
+}
+
+bool delPhoneRec(TNODE **node, const char *phone, int phoneIndex)
+{
+  if (phone[phoneIndex] == '\0')
+  {
+    free((*node)->m_Name);
+    (*node)->m_Name = nullptr;
+    if (isChildless(*node))
+    {
+      free(*node);
+      *node = nullptr;
+    }
+    return true;
+  }
+  char digit = phone[phoneIndex];
+  if (!isdigit(digit) || phoneIndex == PHONE_DIGITS)
+    return false;
+
+  int asNumber = digit - '0';
+
+  TNODE **child = &(*node)->m_Child[asNumber];
+  if (*child == nullptr)
+    return false;
+
+  bool smthDeleted = delPhoneRec(child, phone, phoneIndex + 1);
+
+  if (smthDeleted && (*node)->m_Name == nullptr && isChildless(*node))
+  {
+    free(*node);
+    *node = nullptr;
+  }
+
+  return smthDeleted;
+}
+
 bool delPhone(TPHONEBOOK *book,
               const char *phone)
 {
-  // todo
+  TNODE **node = &book->m_Root;
+  if (*node == nullptr)
+    return false;
+  int phoneIndex = 0;
+  bool deleted = delPhoneRec(node, phone, phoneIndex);
+  if (deleted)
+    book->m_Size--;
+  return deleted;
 }
+
 const char *findPhone(TPHONEBOOK *book,
                       const char *phone)
 {
-  // todo
+  char *res = nullptr;
+  TNODE *node = book->m_Root;
+  if (node == nullptr)
+    return res;
+
+  int phoneIndex = 0;
+  char digit;
+
+  while (true)
+  {
+    digit = phone[phoneIndex++];
+    if (digit == 0)
+      return res;
+    if (!isdigit(digit))
+      return nullptr;
+    int asNumber = digit - '0';
+    node = node->m_Child[asNumber];
+    if (node == nullptr)
+      return res;
+    if (node->m_Name != nullptr)
+      res = node->m_Name;
+  }
+
+  return res;
 }
 
 #ifndef __PROGTEST__
 int main()
 {
   TPHONEBOOK b = {nullptr, 0};
+  assert(!delPhone(&b, "420"));
   char tmpStr[100];
   const char *name;
   assert(addPhone(&b, "420", "Czech Republic"));
